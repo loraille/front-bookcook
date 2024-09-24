@@ -26,7 +26,7 @@ export default function RecetteScreen() {
   const [titre, setTitre] = useState(recette.titre.value);
   const [ingredients, setIgredients] = useState(recette.ingredients);
   const [preparation, setPreparation] = useState(recette.preparation);
-  console.log('---------------->', preparation[0]);
+  // console.log('---------------->', preparation[0]);
 
   const ingredientsList = ingredients.map((data, i) => {
     return (
@@ -37,29 +37,30 @@ export default function RecetteScreen() {
     );
   });
 
+  const preparationsList = preparation.map((data, j) => {
+    return (
+      <View key={j} style={styles.preparationItem}>
+        <Text style={styles.consigne}>
+          {j + 1}. {data.consigne}
+        </Text>
+        {j < preparation.length - 1 && (
+          <Image
+            style={styles.loupe}
+            source={require('../assets/fleche.png')}
+          />
+        )}
+      </View>
+    );
+  });
+
   const screenHeight = Dimensions.get('window').height;
 
-  const [editingIndex, setEditingIndex] = useState(null);
-  const [consigneText, setConsigneText] = useState([
-    "Faire revenir l'oignon émincé et l'ail à la poêle avec un filet d'huile d'olive.",
-    "Mixer les pois chiches égouttés avec la cuisine soja jusqu'à obtenir une texture granuleuse.",
-    'Mettre les pois chiches dans un saladier et ajouter le mélange oignon/ail, le curcuma, le piment, le persil haché ainsi que le sel et le poivre. Et pour finir, ajouter la farine',
-    'Former des palets puis faire dorer sur une poêle huilée pendant quelques minutes de chaque côté.',
-    "Servir immédiatement accompagnées d'une salade.",
-  ]);
-
-  const handleLongPress = (index) => {
-    setEditingIndex(index);
+  const handleEdition = () => {
+    console.log('edition');
   };
 
-  const handleChangeText = (index, text) => {
-    const newConsigneText = [...consigneText];
-    newConsigneText[index] = text;
-    setConsigneText(newConsigneText);
-  };
-
-  const handleBlur = () => {
-    setEditingIndex(null);
+  const handleValidation = () => {
+    console.log('validation');
   };
 
   return (
@@ -108,34 +109,28 @@ export default function RecetteScreen() {
           style={styles.separateur}
           source={require('../assets/separateur.png')}
         />
-
-        <View style={styles.preparationContainer}>
-          <Text style={styles.preparationTitre}>Préparation:</Text>
-          {consigneText.map((text, index) => (
-            <TouchableOpacity
-              key={index}
-              onLongPress={() => handleLongPress(index)}
-            >
-              {editingIndex === index ? (
-                <TextInput
-                  style={styles.consigneInput}
-                  value={text}
-                  onChangeText={(newText) => handleChangeText(index, newText)}
-                  onBlur={handleBlur}
-                  multiline
-                />
-              ) : (
-                <Text style={styles.consigne}>{text}</Text>
-              )}
-            </TouchableOpacity>
-          ))}
-        </View>
+        <Text style={styles.preparationTitre}>Préparation</Text>
+        <View style={styles.preparationContainer}>{preparationsList}</View>
 
         <Image
           style={styles.separateur}
           source={require('../assets/separateur.png')}
         />
-        <Text style={styles.bonapp}>Bon appétit ! </Text>
+
+        <TouchableOpacity
+          onPress={() => handleEdition()}
+          style={styles.button}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.textButton}>Editer</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => handleValidation()}
+          style={styles.button}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.textButton}>Valider</Text>
+        </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -218,32 +213,37 @@ const styles = StyleSheet.create({
     fontSize: 23,
     textAlign: 'left',
     alignSelf: 'flex-start',
-    width: '100%', // Prend toute la largeur disponible
+    width: '100%',
   },
   separateur: {
     width: '90%',
     height: 15,
     objectFit: 'scale-down',
+    marginTop: 15,
   },
   preparationContainer: {
     width: '90%',
+  },
+  preparationItem: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    // marginVertical: 5,
   },
   preparationTitre: {
     fontSize: 25,
     fontFamily: 'Dancing',
     textDecorationLine: 'underline',
+    margin: 5,
   },
   consigne: {
     fontSize: 23,
     fontFamily: 'Dancing',
   },
-  consigneInput: {
-    fontSize: 23,
-    fontFamily: 'Dancing',
-    borderColor: 'gray',
-    borderWidth: 1,
-    padding: 5,
-    marginVertical: 5,
+  loupe: {
+    height: 20,
+    objectFit: 'scale-down',
+    width: '15%',
+    alignSelf: 'center',
   },
   bonapp: {
     marginTop: 10,
@@ -251,5 +251,19 @@ const styles = StyleSheet.create({
     fontFamily: 'Dancing',
     borderColor: 'black',
     textDecorationLine: 'underline',
+  },
+  button: {
+    alignItems: 'center',
+    paddingTop: 8,
+    width: '80%',
+    marginTop: 30,
+    backgroundColor: '#ec6e5b',
+    borderRadius: 10,
+  },
+  textButton: {
+    color: '#ffffff',
+    height: 30,
+    fontWeight: '600',
+    fontSize: 16,
   },
 });
