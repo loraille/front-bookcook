@@ -111,6 +111,8 @@ export default function RecoScreen() {
       </View>
     );
   }
+
+  //! ---------------Remove to test with camera--------------------------
   dispatch(addRecette(mindeeResponse));
 
   return (
