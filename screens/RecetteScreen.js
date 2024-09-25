@@ -1,6 +1,11 @@
-import React, { useState, useRef } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  useMemo,
+} from 'react';
+import { useSelector } from 'react-redux';
 import {
   Image,
   StyleSheet,
@@ -22,7 +27,6 @@ export default function RecetteScreen() {
   console.log('-------------------RECETTE-----------------------');
 
   const recette = useSelector((state) => state.recette.value.mindeeInfo);
-  //* ------------data from Mindee------------
   const [nombrePersonnes, setNombrePersonnes] = useState(
     recette.nombrepersonnes.value,
   );
@@ -31,23 +35,125 @@ export default function RecetteScreen() {
   );
   const [tempsCuisson, setTempsCuisson] = useState(recette.cuissontime.value);
   const [titre, setTitre] = useState(recette.titre.value);
-  const [ingredients, setIgredients] = useState(recette.ingredients);
+  const [ingredients, setIngredients] = useState(recette.ingredients);
   const [preparation, setPreparation] = useState(recette.preparation);
+
   const [showConfetti, setShowConfetti] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [isImageReplaced, setIsImageReplaced] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [editingIndex, setEditingIndex] = useState(null);
+  const [editingIngredientIndex, setEditingIngredientIndex] = useState(null);
+  const [editingPreparationIndex, setEditingPreparationIndex] = useState(null);
 
-  const ingredientsList = ingredients.map((data, i) => {
-    return (
+  const confettiRef = useRef(null);
+
+  useEffect(() => {
+    if (showConfetti) {
+      confettiRef.current.start();
+    }
+  }, [showConfetti]);
+
+  const handleEdition = useCallback(() => {
+    setIsEditing((prev) => !prev);
+    if (!isEditing) {
+      setEditingIngredientIndex(null);
+      setEditingPreparationIndex(null);
+    }
+  }, [isEditing]);
+
+  const handleLongPressIngredient = useCallback(
+    (index) => {
+      if (isEditing) {
+        setEditingIngredientIndex(index);
+      }
+    },
+    [isEditing],
+  );
+
+  const handlePressIngredient = useCallback(
+    (index) => {
+      if (isEditing && editingIngredientIndex === index) {
+        setEditingIngredientIndex(null);
+      }
+    },
+    [editingIngredientIndex, isEditing],
+  );
+
+  const handleIngredientChange = useCallback((index, field, value) => {
+    setIngredients((prevIngredients) => {
+      const updatedIngredients = [...prevIngredients];
+      updatedIngredients[index] = {
+        ...updatedIngredients[index],
+        [field]: value,
+      };
+      return updatedIngredients;
+    });
+  }, []);
+
+  const handleRemoveIngredient = useCallback((index) => {
+    setIngredients((prevIngredients) =>
+      prevIngredients.filter((_, i) => i !== index),
+    );
+  }, []);
+
+  const handleAddIngredient = useCallback(() => {
+    setIngredients((prevIngredients) => [
+      ...prevIngredients,
+      { ingredient: '', quantite: '', unite: '' },
+    ]);
+  }, []);
+
+  const handleLongPressPreparation = useCallback(
+    (index) => {
+      if (isEditing) {
+        setEditingPreparationIndex(index);
+      }
+    },
+    [isEditing],
+  );
+
+  const handlePressPreparation = useCallback(
+    (index) => {
+      if (isEditing && editingPreparationIndex === index) {
+        setEditingPreparationIndex(null);
+      }
+    },
+    [editingPreparationIndex, isEditing],
+  );
+
+  const handlePreparationChange = useCallback((index, value) => {
+    setPreparation((prevPreparation) => {
+      const updatedPreparation = [...prevPreparation];
+      updatedPreparation[index] = {
+        ...updatedPreparation[index],
+        consigne: value,
+      };
+      return updatedPreparation;
+    });
+  }, []);
+
+  const handleRemovePreparation = useCallback((index) => {
+    setPreparation((prevPreparation) =>
+      prevPreparation.filter((_, i) => i !== index),
+    );
+  }, []);
+
+  const handleAddPreparation = useCallback(() => {
+    setPreparation((prevPreparation) => [
+      ...prevPreparation,
+      { consigne: 'Consigne à modifier par un appui long' },
+    ]);
+  }, []);
+
+  const renderIngredients = useMemo(() => {
+    return ingredients.map((data, i) => (
       <View key={i} style={styles.ingredientItem}>
         <TouchableOpacity
           onLongPress={() => handleLongPressIngredient(i)}
           onPress={() => handlePressIngredient(i)}
           style={styles.ingredientTouchable}
         >
-          {editingIndex === i && isEditing ? (
+          {editingIngredientIndex === i && isEditing ? (
             <>
               <TextInput
                 style={styles.ingredientInput}
@@ -73,30 +179,42 @@ export default function RecetteScreen() {
                 }
                 placeholder="Unité"
               />
-              <TouchableOpacity onPress={() => handleRemoveIngredient(i)}>
-                <Text style={styles.removeButton}>Supprimer</Text>
-              </TouchableOpacity>
+              <View style={styles.buttonContainer}>
+                <TouchableOpacity
+                  onPress={() => setEditingIngredientIndex(null)}
+                >
+                  <Text style={styles.okButton}>Valider</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => handleRemoveIngredient(i)}>
+                  <Text style={styles.removeButton}>Supprimer</Text>
+                </TouchableOpacity>
+              </View>
             </>
           ) : (
             <Text style={styles.ingredient}>
-              -{data.ingredient} {data.quantite}
-              {data.unite}
+              - {data.ingredient} {data.quantite} {data.unite}
             </Text>
           )}
         </TouchableOpacity>
       </View>
-    );
-  });
+    ));
+  }, [
+    ingredients,
+    editingIngredientIndex,
+    isEditing,
+    handleIngredientChange,
+    handleRemoveIngredient,
+  ]);
 
-  const preparationsList = preparation.map((data, j) => {
-    return (
+  const renderPreparations = useMemo(() => {
+    return preparation.map((data, j) => (
       <View key={j} style={styles.preparationItem}>
         <TouchableOpacity
           onLongPress={() => handleLongPressPreparation(j)}
           onPress={() => handlePressPreparation(j)}
           style={styles.preparationTouchable}
         >
-          {editingIndex === j && isEditing ? (
+          {editingPreparationIndex === j && isEditing ? (
             <>
               <ScrollView>
                 <TextInput
@@ -108,9 +226,16 @@ export default function RecetteScreen() {
                   placeholder="Consigne"
                 />
               </ScrollView>
-              <TouchableOpacity onPress={() => handleRemovePreparation(j)}>
-                <Text style={styles.removeButton}>Supprimer</Text>
-              </TouchableOpacity>
+              <View style={styles.buttonContainer}>
+                <TouchableOpacity
+                  onPress={() => setEditingPreparationIndex(null)}
+                >
+                  <Text style={styles.okButton}>OK</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => handleRemovePreparation(j)}>
+                  <Text style={styles.removeButton}>Supprimer</Text>
+                </TouchableOpacity>
+              </View>
             </>
           ) : (
             <Text style={styles.consigne}>
@@ -118,88 +243,17 @@ export default function RecetteScreen() {
             </Text>
           )}
         </TouchableOpacity>
-        {j < preparation.length - 1 && (
-          <Image
-            style={styles.loupe}
-            source={require('../assets/fleche.png')}
-          />
-        )}
       </View>
-    );
-  });
+    ));
+  }, [
+    preparation,
+    editingPreparationIndex,
+    isEditing,
+    handlePreparationChange,
+    handleRemovePreparation,
+  ]);
 
   const screenHeight = Dimensions.get('window').height;
-
-  const handleEdition = () => {
-    setIsEditing(!isEditing);
-    if (!isEditing) {
-      setEditingIndex(null);
-    }
-  };
-
-  const handleLongPressIngredient = (index) => {
-    if (isEditing) {
-      setEditingIndex(index);
-    }
-  };
-
-  const handlePressIngredient = (index) => {
-    if (isEditing && editingIndex === index) {
-      setEditingIndex(null);
-    }
-  };
-
-  const handleLongPressPreparation = (index) => {
-    if (isEditing) {
-      setEditingIndex(index);
-    }
-  };
-
-  const handlePressPreparation = (index) => {
-    if (isEditing && editingIndex === index) {
-      setEditingIndex(null);
-    }
-  };
-
-  const handleIngredientChange = (index, field, value) => {
-    const newIngredients = [...ingredients];
-    newIngredients[index][field] = value;
-    setIgredients(newIngredients);
-  };
-
-  const handleRemoveIngredient = (index) => {
-    const newIngredients = [...ingredients];
-    newIngredients.splice(index, 1);
-    setIgredients(newIngredients);
-  };
-
-  const handleAddIngredient = () => {
-    const newIngredients = [
-      ...ingredients,
-      { ingredient: '', quantite: '', unite: '' },
-    ];
-    setIgredients(newIngredients);
-  };
-
-  const handlePreparationChange = (index, value) => {
-    const newPreparation = [...preparation];
-    newPreparation[index].consigne = value;
-    setPreparation(newPreparation);
-  };
-
-  const handleRemovePreparation = (index) => {
-    const newPreparation = [...preparation];
-    newPreparation.splice(index, 1);
-    setPreparation(newPreparation);
-  };
-
-  const handleAddPreparation = () => {
-    const newPreparation = [
-      ...preparation,
-      { consigne: 'Consigne à modifier par un appui long' },
-    ];
-    setPreparation(newPreparation);
-  };
 
   //* ---------------------add the reciepe------------------------
   const handleValidation = async () => {
@@ -239,8 +293,6 @@ export default function RecetteScreen() {
       );
     }
   };
-
-  const confettiRef = useRef(null);
 
   const selectImage = async () => {
     console.log('selectImage called');
@@ -411,7 +463,7 @@ export default function RecetteScreen() {
           )}
           <View style={styles.ingredientsContainer}>
             <Text style={styles.ingredients}>Ingrédients:</Text>
-            <View style={styles.ingredientsGrid}>{ingredientsList}</View>
+            <View style={styles.ingredientsGrid}>{renderIngredients}</View>
             {isEditing && (
               <TouchableOpacity
                 onPress={handleAddIngredient}
@@ -430,7 +482,7 @@ export default function RecetteScreen() {
           source={require('../assets/separateur.png')}
         />
         <Text style={styles.preparationTitre}>Préparation</Text>
-        <View style={styles.preparationContainer}>{preparationsList}</View>
+        <View style={styles.preparationContainer}>{renderPreparations}</View>
         {isEditing && (
           <TouchableOpacity
             onPress={handleAddPreparation}
@@ -595,6 +647,16 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: 'red',
     marginLeft: 10,
+  },
+  okButton: {
+    fontSize: 20,
+    color: 'red',
+    marginRight: 10,
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
   },
   addButton: {
     marginTop: 10,
