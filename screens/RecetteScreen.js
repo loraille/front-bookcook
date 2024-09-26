@@ -19,14 +19,20 @@ import {
   Alert,
   TextInput,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
-import { urlBackend } from '../var';
 import ConfettiCannon from 'react-native-confetti-cannon';
+import {
+  handleValidation,
+  selectImage,
+  uploadImageToBackend,
+} from '../modules/utils.recetteSreen';
+import { urlBackend } from '../var';
 
 export default function RecetteScreen() {
   console.log('-------------------RECETTE-----------------------');
 
-  const recette = useSelector((state) => state.recette.value.mindeeInfo);
+  const recetteInfo = useSelector((state) => state.recette.value);
+  console.log('---------->recetteInfo', recetteInfo);
+  const recette = recetteInfo.mindeeInfo;
   const [nombrePersonnes, setNombrePersonnes] = useState(
     recette.nombrepersonnes.value,
   );
@@ -39,20 +45,25 @@ export default function RecetteScreen() {
   const [preparation, setPreparation] = useState(recette.preparation);
 
   const [showConfetti, setShowConfetti] = useState(false);
-  const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedImage, setSelectedImage] = useState(recetteInfo.image);
   const [isImageReplaced, setIsImageReplaced] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingIngredientIndex, setEditingIngredientIndex] = useState(null);
   const [editingPreparationIndex, setEditingPreparationIndex] = useState(null);
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [notes, setNotes] = useState('-Appui long pour éditer les notes!');
 
+  const screenHeight = Dimensions.get('window').height;
   const confettiRef = useRef(null);
 
+  //*------------------showConfetti----------------------------
   useEffect(() => {
     if (showConfetti) {
       confettiRef.current.start();
     }
   }, [showConfetti]);
 
+  //*--------------------HANDLEEDITION--------------------------
   const handleEdition = useCallback(() => {
     setIsEditing((prev) => !prev);
     if (!isEditing) {
@@ -61,6 +72,7 @@ export default function RecetteScreen() {
     }
   }, [isEditing]);
 
+  //*--------------------HANDLE INGREDIENT----------------
   const handleLongPressIngredient = useCallback(
     (index) => {
       if (isEditing) {
@@ -69,7 +81,6 @@ export default function RecetteScreen() {
     },
     [isEditing],
   );
-
   const handlePressIngredient = useCallback(
     (index) => {
       if (isEditing && editingIngredientIndex === index) {
@@ -78,7 +89,6 @@ export default function RecetteScreen() {
     },
     [editingIngredientIndex, isEditing],
   );
-
   const handleIngredientChange = useCallback((index, field, value) => {
     setIngredients((prevIngredients) => {
       const updatedIngredients = [...prevIngredients];
@@ -89,13 +99,11 @@ export default function RecetteScreen() {
       return updatedIngredients;
     });
   }, []);
-
   const handleRemoveIngredient = useCallback((index) => {
     setIngredients((prevIngredients) =>
       prevIngredients.filter((_, i) => i !== index),
     );
   }, []);
-
   const handleAddIngredient = useCallback(() => {
     setIngredients((prevIngredients) => [
       ...prevIngredients,
@@ -103,6 +111,7 @@ export default function RecetteScreen() {
     ]);
   }, []);
 
+  //*--------------------HANDLE PREPARATION----------------
   const handleLongPressPreparation = useCallback(
     (index) => {
       if (isEditing) {
@@ -111,7 +120,6 @@ export default function RecetteScreen() {
     },
     [isEditing],
   );
-
   const handlePressPreparation = useCallback(
     (index) => {
       if (isEditing && editingPreparationIndex === index) {
@@ -120,7 +128,6 @@ export default function RecetteScreen() {
     },
     [editingPreparationIndex, isEditing],
   );
-
   const handlePreparationChange = useCallback((index, value) => {
     setPreparation((prevPreparation) => {
       const updatedPreparation = [...prevPreparation];
@@ -131,13 +138,11 @@ export default function RecetteScreen() {
       return updatedPreparation;
     });
   }, []);
-
   const handleRemovePreparation = useCallback((index) => {
     setPreparation((prevPreparation) =>
       prevPreparation.filter((_, i) => i !== index),
     );
   }, []);
-
   const handleAddPreparation = useCallback(() => {
     setPreparation((prevPreparation) => [
       ...prevPreparation,
@@ -145,57 +150,64 @@ export default function RecetteScreen() {
     ]);
   }, []);
 
+  //*----------------------RENDER INGREDIENT /PREPARATION----------------------
   const renderIngredients = useMemo(() => {
     return ingredients.map((data, i) => (
       <View key={i} style={styles.ingredientItem}>
-        <TouchableOpacity
-          onLongPress={() => handleLongPressIngredient(i)}
-          onPress={() => handlePressIngredient(i)}
-          style={styles.ingredientTouchable}
-        >
-          {editingIngredientIndex === i && isEditing ? (
-            <>
-              <TextInput
-                style={styles.ingredientInput}
-                value={data.ingredient}
-                onChangeText={(text) =>
-                  handleIngredientChange(i, 'ingredient', text)
-                }
-                placeholder="Ingrédient"
-              />
-              <TextInput
-                style={styles.ingredientInput}
-                value={data.quantite}
-                onChangeText={(text) =>
-                  handleIngredientChange(i, 'quantite', text)
-                }
-                placeholder="Quantité"
-              />
-              <TextInput
-                style={styles.ingredientInput}
-                value={data.unite}
-                onChangeText={(text) =>
-                  handleIngredientChange(i, 'unite', text)
-                }
-                placeholder="Unité"
-              />
-              <View style={styles.buttonContainer}>
-                <TouchableOpacity
-                  onPress={() => setEditingIngredientIndex(null)}
-                >
-                  <Text style={styles.okButton}>Valider</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleRemoveIngredient(i)}>
-                  <Text style={styles.removeButton}>Supprimer</Text>
-                </TouchableOpacity>
-              </View>
-            </>
-          ) : (
-            <Text style={styles.ingredient}>
-              - {data.ingredient} {data.quantite} {data.unite}
-            </Text>
-          )}
-        </TouchableOpacity>
+        {isEditing ? (
+          <TouchableOpacity
+            onLongPress={() => handleLongPressIngredient(i)}
+            onPress={() => handlePressIngredient(i)}
+            style={styles.ingredientTouchable}
+          >
+            {editingIngredientIndex === i && isEditing ? (
+              <>
+                <TextInput
+                  style={styles.ingredientInput}
+                  value={data.ingredient}
+                  onChangeText={(text) =>
+                    handleIngredientChange(i, 'ingredient', text)
+                  }
+                  placeholder="Ingrédient"
+                />
+                <TextInput
+                  style={styles.ingredientInput}
+                  value={data.quantite}
+                  onChangeText={(text) =>
+                    handleIngredientChange(i, 'quantite', text)
+                  }
+                  placeholder="Quantité"
+                />
+                <TextInput
+                  style={styles.ingredientInput}
+                  value={data.unite}
+                  onChangeText={(text) =>
+                    handleIngredientChange(i, 'unite', text)
+                  }
+                  placeholder="Unité"
+                />
+                <View style={styles.buttonContainer}>
+                  <TouchableOpacity
+                    onPress={() => setEditingIngredientIndex(null)}
+                  >
+                    <Text style={styles.okButton}>Valider</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => handleRemoveIngredient(i)}>
+                    <Text style={styles.removeButton}>Supprimer</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            ) : (
+              <Text style={styles.ingredient}>
+                - {data.ingredient} {data.quantite} {data.unite}
+              </Text>
+            )}
+          </TouchableOpacity>
+        ) : (
+          <Text style={styles.ingredient}>
+            - {data.ingredient} {data.quantite} {data.unite}
+          </Text>
+        )}
       </View>
     ));
   }, [
@@ -205,44 +217,49 @@ export default function RecetteScreen() {
     handleIngredientChange,
     handleRemoveIngredient,
   ]);
-
   const renderPreparations = useMemo(() => {
     return preparation.map((data, j) => (
       <View key={j} style={styles.preparationItem}>
-        <TouchableOpacity
-          onLongPress={() => handleLongPressPreparation(j)}
-          onPress={() => handlePressPreparation(j)}
-          style={styles.preparationTouchable}
-        >
-          {editingPreparationIndex === j && isEditing ? (
-            <>
-              <ScrollView>
-                <TextInput
-                  style={styles.consigneInput}
-                  value={data.consigne}
-                  onChangeText={(text) => handlePreparationChange(j, text)}
-                  multiline
-                  numberOfLines={4}
-                  placeholder="Consigne"
-                />
-              </ScrollView>
-              <View style={styles.buttonContainer}>
-                <TouchableOpacity
-                  onPress={() => setEditingPreparationIndex(null)}
-                >
-                  <Text style={styles.okButton}>OK</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleRemovePreparation(j)}>
-                  <Text style={styles.removeButton}>Supprimer</Text>
-                </TouchableOpacity>
-              </View>
-            </>
-          ) : (
-            <Text style={styles.consigne}>
-              {j + 1}. {data.consigne}
-            </Text>
-          )}
-        </TouchableOpacity>
+        {isEditing ? (
+          <TouchableOpacity
+            onLongPress={() => handleLongPressPreparation(j)}
+            onPress={() => handlePressPreparation(j)}
+            style={styles.preparationTouchable}
+          >
+            {editingPreparationIndex === j && isEditing ? (
+              <>
+                <ScrollView>
+                  <TextInput
+                    style={styles.consigneInput}
+                    value={data.consigne}
+                    onChangeText={(text) => handlePreparationChange(j, text)}
+                    multiline
+                    numberOfLines={4}
+                    placeholder="Consigne"
+                  />
+                </ScrollView>
+                <View style={styles.buttonContainer}>
+                  <TouchableOpacity
+                    onPress={() => setEditingPreparationIndex(null)}
+                  >
+                    <Text style={styles.okButton}>OK</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => handleRemovePreparation(j)}>
+                    <Text style={styles.removeButton}>Supprimer</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            ) : (
+              <Text style={styles.consigne}>
+                {j + 1}. {data.consigne}
+              </Text>
+            )}
+          </TouchableOpacity>
+        ) : (
+          <Text style={styles.consigne}>
+            {j + 1}. {data.consigne}
+          </Text>
+        )}
       </View>
     ));
   }, [
@@ -253,116 +270,44 @@ export default function RecetteScreen() {
     handleRemovePreparation,
   ]);
 
-  const screenHeight = Dimensions.get('window').height;
+  const [categories, setCategories] = useState([]);
+  useEffect(() => {
+    fetch(`${urlBackend}/categorie`)
+      .then((response) => response.json())
+      .then((data) => setCategories(data.categoryInfo));
+  }, []);
+  const [message, setMessage] = useState(null);
 
-  //* ---------------------add the reciepe------------------------
-  const handleValidation = async () => {
-    const data = {
-      tempsPreparation,
-      tempsCuisson,
-      titre,
-      ingredients,
-      preparation,
-      nombrePersonnes,
-    };
-
+  const handleValidationNotes = async () => {
     try {
-      const response = await fetch(`${urlBackend}/recette`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        `${urlBackend}/recette/notes/66f563e01d39a4bd4e068af9`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ notes }),
         },
-        body: JSON.stringify(data),
-      });
+      );
 
-      if (response.ok) {
-        //Alert.alert('Succès', 'Les données ont été envoyées avec succès.');
-        // Trigger confetti
-        setShowConfetti(true);
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+
+      const data = await response.json();
+      if (data.result) {
+        setMessage('Notes updated successfully');
       } else {
-        Alert.alert(
-          'Erreur',
-          "Il y a eu une erreur lors de l'envoi des données.",
-        );
+        setMessage('Failed to update notes');
       }
     } catch (error) {
-      console.error('Erreur:', error);
-      Alert.alert(
-        'Erreur',
-        "Il y a eu une erreur lors de l'envoi des données.",
-      );
+      console.error('Error updating notes:', error);
+      setMessage('Failed to update notes');
     }
   };
 
-  const selectImage = async () => {
-    console.log('selectImage called');
-    // Demander la permission d'accéder à la galerie
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert(
-        'Permission refusée',
-        "Vous devez autoriser l'accès à la galerie.",
-      );
-      return;
-    }
-
-    // Ouvrir la galerie pour sélectionner une image
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 1,
-    });
-
-    if (result.canceled) {
-      console.log('Image selection cancelled');
-      return;
-    }
-
-    if (result.assets && result.assets.length > 0) {
-      const selectedAsset = result.assets[0];
-      if (selectedAsset.uri) {
-        console.log('Image selected:', selectedAsset.uri);
-        setSelectedImage(selectedAsset.uri);
-        setIsImageReplaced(true);
-        await uploadImageToBackend(selectedAsset.uri);
-      } else {
-        console.log('No URI found in selected asset:', selectedAsset);
-      }
-    } else {
-      console.log('No assets found in result:', result);
-    }
-  };
-
-  const uploadImageToBackend = async (imageUri) => {
-    try {
-      const formData = new FormData();
-      formData.append('photoFromFront', {
-        uri: imageUri,
-        type: 'image/jpeg',
-        name: 'photo.jpg',
-      });
-      const response = await fetch(`${urlBackend}/upload`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        if (result.result) {
-          console.log('Image uploaded successfully:', result.url);
-          setSelectedImage(result.url);
-        } else {
-          console.error('Error uploading image:', result.error);
-        }
-      } else {
-        console.error('Error uploading image:', response.statusText);
-      }
-    } catch (error) {
-      console.error('Error uploading image:', error);
-    }
-  };
-
+  //*-------------------------RENDER--------------------------------------------
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -370,30 +315,37 @@ export default function RecetteScreen() {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
     >
       <ScrollView contentContainerStyle={styles.scrollViewContent}>
+        {/* ---------------------------TITRE--------------------------- */}
         {isEditing ? (
-          <TextInput
-            style={styles.titleInput}
-            value={titre}
-            onChangeText={setTitre}
-          />
+          <ScrollView>
+            <TextInput
+              multiline
+              numberOfLines={3}
+              style={styles.titleInput}
+              value={titre}
+              onChangeText={setTitre}
+            />
+          </ScrollView>
         ) : (
           <Text style={styles.title}>{titre}</Text>
         )}
+        {/* ---------------------------INFOS--------------------------- */}
         <View style={styles.dispo1}>
           <View style={styles.dispo2}>
             <Image
               style={styles.infos}
               source={require('../assets/person.png')}
             />
+            <Text style={styles.infosText}> :</Text>
             {isEditing ? (
               <TextInput
                 style={styles.infosTextInput}
-                value={nombrePersonnes.toString()}
-                onChangeText={(text) => setNombrePersonnes(parseInt(text, 10))}
+                value={nombrePersonnes}
+                onChangeText={setNombrePersonnes}
                 keyboardType="numeric"
               />
             ) : (
-              <Text style={styles.infosText}>: {nombrePersonnes}</Text>
+              <Text style={styles.infosText}>{nombrePersonnes}</Text>
             )}
           </View>
           <View style={styles.dispo2}>
@@ -401,6 +353,7 @@ export default function RecetteScreen() {
               style={styles.infos}
               source={require('../assets/cooking.png')}
             />
+            <Text style={styles.infosText}> :</Text>
             {isEditing ? (
               <TextInput
                 style={styles.infosTextInput}
@@ -408,7 +361,7 @@ export default function RecetteScreen() {
                 onChangeText={setTempsPreparation}
               />
             ) : (
-              <Text style={styles.infosText}>: {tempsPreparation}</Text>
+              <Text style={styles.infosText}>{tempsPreparation}</Text>
             )}
           </View>
           <View style={styles.dispo2}>
@@ -416,6 +369,7 @@ export default function RecetteScreen() {
               style={styles.infos}
               source={require('../assets/cuisson.png')}
             />
+            <Text style={styles.infosText}> :</Text>
             {isEditing ? (
               <TextInput
                 style={styles.infosTextInput}
@@ -423,14 +377,41 @@ export default function RecetteScreen() {
                 onChangeText={setTempsCuisson}
               />
             ) : (
-              <Text style={styles.infosText}>: {tempsCuisson}</Text>
+              <Text style={styles.infosText}>{tempsCuisson}</Text>
             )}
           </View>
         </View>
-
-        <View style={styles.pictureContainer}>
-          {isEditing && (
-            <TouchableOpacity onPress={selectImage}>
+        {/* ---------------------------IMAGE--------------------------- */}
+        <View style={[styles.pictureBorder, { height: screenHeight * 0.24 }]}>
+          <View style={styles.pictureContainer}>
+            {isEditing && (
+              <TouchableOpacity
+                onPress={() =>
+                  selectImage(
+                    setSelectedImage,
+                    setIsImageReplaced,
+                    uploadImageToBackend,
+                  )
+                }
+              >
+                <Image
+                  style={[
+                    styles.foodPicture,
+                    { height: screenHeight * 0.2 },
+                    isImageReplaced
+                      ? styles.replacedImage
+                      : styles.defaultImage,
+                  ]}
+                  source={
+                    selectedImage
+                      ? { uri: selectedImage }
+                      : require('../assets/foodPicture.png')
+                  }
+                  resizeMode={isImageReplaced ? 'cover' : 'contain'}
+                />
+              </TouchableOpacity>
+            )}
+            {!isEditing && (
               <Image
                 style={[
                   styles.foodPicture,
@@ -444,43 +425,28 @@ export default function RecetteScreen() {
                 }
                 resizeMode={isImageReplaced ? 'cover' : 'contain'}
               />
-            </TouchableOpacity>
-          )}
-          {!isEditing && (
-            <Image
-              style={[
-                styles.foodPicture,
-                { height: screenHeight * 0.2 },
-                isImageReplaced ? styles.replacedImage : styles.defaultImage,
-              ]}
-              source={
-                selectedImage
-                  ? { uri: selectedImage }
-                  : require('../assets/foodPicture.png')
-              }
-              resizeMode={isImageReplaced ? 'cover' : 'contain'}
-            />
-          )}
-          <View style={styles.ingredientsContainer}>
-            <Text style={styles.ingredients}>Ingrédients:</Text>
-            <View style={styles.ingredientsGrid}>{renderIngredients}</View>
-            {isEditing && (
-              <TouchableOpacity
-                onPress={handleAddIngredient}
-                style={styles.addButton}
-              >
-                <Text style={styles.addButtonText}>
-                  + Ajouter un ingrédient
-                </Text>
-              </TouchableOpacity>
             )}
           </View>
+        </View>
+        {/* ---------------------------INGREDIENTS--------------------------- */}
+        <View style={styles.ingredientsContainer}>
+          <Text style={styles.titreCentre}>Ingrédients:</Text>
+          <View style={styles.ingredientsGrid}>{renderIngredients}</View>
+          {isEditing && (
+            <TouchableOpacity
+              onPress={handleAddIngredient}
+              style={styles.addButton}
+            >
+              <Text style={styles.addButtonText}>+ Ajouter un ingrédient</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <Image
           style={styles.separateur}
           source={require('../assets/separateur.png')}
         />
+        {/* ---------------------------PREPARATION--------------------------- */}
         <Text style={styles.preparationTitre}>Préparation</Text>
         <View style={styles.preparationContainer}>{renderPreparations}</View>
         {isEditing && (
@@ -491,12 +457,48 @@ export default function RecetteScreen() {
             <Text style={styles.addButtonText}>+ Ajouter une consigne</Text>
           </TouchableOpacity>
         )}
-
         <Image
           style={styles.separateur}
           source={require('../assets/separateur.png')}
         />
-
+        {/* ---------------------------ANNOTATIONS--------------------------- */}
+        <View style={styles.notesContainer}>
+          <ScrollView>
+            <Text style={styles.titreCentre}>Mes notes:</Text>
+            <TouchableOpacity
+              onLongPress={() => setIsEditingNotes(true)}
+              onPress={() => setIsEditingNotes(false)}
+            >
+              {isEditingNotes ? (
+                <>
+                  <TextInput
+                    style={styles.notesInput}
+                    value={notes}
+                    onChangeText={setNotes}
+                    multiline
+                    numberOfLines={4}
+                  />
+                  <TouchableOpacity
+                    onPress={() => {
+                      handleValidationNotes();
+                      setIsEditingNotes(false);
+                    }}
+                  >
+                    <Text style={styles.okButton}>OK</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <Text style={styles.notes}>{notes}</Text>
+              )}
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+        {/* {message && <Text style={styles.message}>{message}</Text>} */}
+        <Image
+          style={styles.separateur}
+          source={require('../assets/separateur.png')}
+        />
+        {/* ---------------------------BOUTONS--------------------------- */}
         <TouchableOpacity
           onPress={handleEdition}
           style={styles.button}
@@ -507,17 +509,30 @@ export default function RecetteScreen() {
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          onPress={handleValidation}
+          onPress={() =>
+            handleValidation(
+              {
+                tempsPreparation,
+                tempsCuisson,
+                titre,
+                ingredients,
+                preparation,
+                nombrePersonnes,
+                image: selectedImage,
+              },
+              setShowConfetti,
+            )
+          }
           style={styles.button}
           activeOpacity={0.8}
         >
-          <Text style={styles.textButton}>Valider</Text>
+          <Text style={styles.textButton}>Ajouter au cahier!</Text>
         </TouchableOpacity>
       </ScrollView>
       {showConfetti && (
         <ConfettiCannon
           ref={confettiRef}
-          count={200}
+          count={300}
           origin={{ x: -10, y: 0 }}
           fadeOut={true}
         />
@@ -526,6 +541,7 @@ export default function RecetteScreen() {
   );
 }
 
+//*-------------------------STYLE----------------------------------------------
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -536,7 +552,7 @@ const styles = StyleSheet.create({
   scrollViewContent: {
     alignItems: 'center',
     justifyContent: 'flex-start',
-    paddingBottom: 120,
+    paddingBottom: 30,
   },
   title: {
     fontFamily: 'Dancing',
@@ -554,9 +570,6 @@ const styles = StyleSheet.create({
     fontSize: 35,
     paddingHorizontal: 5,
     textAlign: 'center',
-    textDecorationLine: 'underline',
-    borderBottomWidth: 1,
-    borderBottomColor: 'black',
   },
   dispo1: {
     marginTop: '2%',
@@ -586,17 +599,23 @@ const styles = StyleSheet.create({
     fontFamily: 'Dancing',
     width: '60%',
   },
-  pictureContainer: {
-    width: '90%',
-    marginTop: '2%',
+  pictureBorder: {
+    width: '85%',
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'red',
+    marginTop: '2%',
+  },
+  pictureContainer: {
+    width: '80%',
+    alignItems: 'center',
+    backgroundColor: 'white',
   },
   foodPicture: {
-    width: '100%',
     borderColor: 'black',
-    borderWidth: 3,
-    marginTop: '5%',
-    aspectRatio: 2,
+    backgroundColor: 'white',
+    borderWidth: 2,
+    aspectRatio: 1.75,
   },
   defaultImage: {
     resizeMode: 'contain',
@@ -605,15 +624,22 @@ const styles = StyleSheet.create({
     resizeMode: 'cover',
   },
   ingredientsContainer: {
-    width: '100%',
+    width: '90%',
     alignSelf: 'flex-start',
     justifyContent: 'flex-start',
+    marginLeft: '5%',
   },
-  ingredients: {
+  titreCentre: {
     fontFamily: 'Dancing',
     fontSize: 25,
     textDecorationLine: 'underline',
-    textAlign: 'left',
+    alignSelf: 'center',
+  },
+  titreLeft: {
+    fontFamily: 'Dancing',
+    fontSize: 25,
+    textDecorationLine: 'underline',
+    marginLeft: '5%',
     alignSelf: 'flex-start',
   },
   ingredientsGrid: {
@@ -630,7 +656,6 @@ const styles = StyleSheet.create({
   ingredientItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 5,
     flexWrap: 'wrap',
   },
   ingredientInput: {
@@ -705,18 +730,27 @@ const styles = StyleSheet.create({
     width: '15%',
     alignSelf: 'center',
   },
-  bonapp: {
-    marginTop: 10,
-    fontSize: 30,
+  notesContainer: {
+    width: '90%',
+  },
+  notes: {
+    fontSize: 23,
     fontFamily: 'Dancing',
-    borderColor: 'black',
-    textDecorationLine: 'underline',
+    paddingHorizontal: 5,
+  },
+  notesInput: {
+    fontSize: 23,
+    fontFamily: 'Dancing',
+    borderBottomWidth: 1,
+    borderBottomColor: 'black',
+    width: '90%',
+    marginVertical: 5,
   },
   button: {
     alignItems: 'center',
     paddingTop: 8,
     width: '80%',
-    marginTop: 30,
+    marginTop: 25,
     backgroundColor: '#ec6e5b',
     borderRadius: 10,
   },
@@ -731,5 +765,10 @@ const styles = StyleSheet.create({
   },
   preparationTouchable: {
     flex: 1,
+  },
+  message: {
+    fontSize: 18,
+    color: 'red',
+    marginTop: 10,
   },
 });
