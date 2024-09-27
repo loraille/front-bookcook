@@ -2,7 +2,7 @@ import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { urlBackend } from '../var';
 
-export const handleValidation = async (data, setShowConfetti) => {
+export const handleValidation = async (data, setShowConfetti, userToken) => {
   try {
     const response = await fetch(`${urlBackend}/recette`, {
       method: 'POST',
@@ -13,7 +13,49 @@ export const handleValidation = async (data, setShowConfetti) => {
     });
 
     if (response.ok) {
-      setShowConfetti(true);
+      const responseData = await response.json();
+      if (responseData) {
+        const newRecipeId = await responseData.data._id;
+        console.log('saved on BDD!', responseData.data.titre);
+
+        const responseUser = await fetch(
+          `${urlBackend}/recette/${userToken}/${newRecipeId}`,
+          {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ newRecipeId }),
+          },
+        );
+
+        if (responseUser.ok) {
+          const responseUserData = await responseUser.json();
+          console.log(
+            "Recette ajoutée à l'utilisateur:",
+            responseUserData.message,
+          );
+        } else {
+          const errorData = await responseUser.json();
+          console.error(
+            "Erreur lors de l'ajout de la recette à l'utilisateur:",
+            errorData,
+          );
+          Alert.alert(
+            'Erreur',
+            "Il y a eu une erreur lors de l'ajout de la recette à l'utilisateur.",
+          );
+        }
+      } else {
+        console.error(
+          'Erreur: La réponse ne contient pas les données attendues.',
+          responseData,
+        );
+        Alert.alert(
+          'Erreur',
+          'La réponse ne contient pas les données attendues.',
+        );
+      }
     } else {
       Alert.alert(
         'Erreur',
@@ -57,7 +99,7 @@ export const selectImage = async (
       setSelectedImage(selectedAsset.uri);
       setIsImageReplaced(true);
       const imageUrl = await uploadImageToBackend(selectedAsset.uri);
-      setSelectedImage(imageUrl); // url from cloudinary
+      setSelectedImage(imageUrl);
     }
   }
 };

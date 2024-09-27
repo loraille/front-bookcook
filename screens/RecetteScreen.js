@@ -18,6 +18,7 @@ import {
   TouchableOpacity,
   Alert,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import {
@@ -31,7 +32,8 @@ export default function RecetteScreen() {
   console.log('-------------------RECETTE-----------------------');
 
   const recetteInfo = useSelector((state) => state.recette.value);
-  console.log('---------->recetteInfo', recetteInfo);
+  const userToken = useSelector((state) => state.user.value.token);
+
   const recette = recetteInfo.mindeeInfo;
   const [nombrePersonnes, setNombrePersonnes] = useState(
     recette.nombrepersonnes.value,
@@ -52,6 +54,8 @@ export default function RecetteScreen() {
   const [editingPreparationIndex, setEditingPreparationIndex] = useState(null);
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [notes, setNotes] = useState('-Appui long pour éditer les notes!');
+  const [isCategoryChosen, setIsCategoryChosen] = useState(false);
+  const [loading, setLoading] = useState(false); // État pour gérer l'affichage de l'écran d'attente
 
   const screenHeight = Dimensions.get('window').height;
   const confettiRef = useRef(null);
@@ -66,6 +70,13 @@ export default function RecetteScreen() {
   //*--------------------HANDLEEDITION--------------------------
   const handleEdition = useCallback(() => {
     setIsEditing((prev) => !prev);
+    if (!isEditing && !isCategoryChosen) {
+      // const alertCategory=
+      return Alert.alert(
+        `Penser à choisir une catégorie
+        pour ajouter au cahier!`,
+      );
+    }
     if (!isEditing) {
       setEditingIngredientIndex(null);
       setEditingPreparationIndex(null);
@@ -73,21 +84,13 @@ export default function RecetteScreen() {
   }, [isEditing]);
 
   //*--------------------HANDLE INGREDIENT----------------
-  const handleLongPressIngredient = useCallback(
+  const handlePressIngredient = useCallback(
     (index) => {
       if (isEditing) {
         setEditingIngredientIndex(index);
       }
     },
     [isEditing],
-  );
-  const handlePressIngredient = useCallback(
-    (index) => {
-      if (isEditing && editingIngredientIndex === index) {
-        setEditingIngredientIndex(null);
-      }
-    },
-    [editingIngredientIndex, isEditing],
   );
   const handleIngredientChange = useCallback((index, field, value) => {
     setIngredients((prevIngredients) => {
@@ -112,21 +115,13 @@ export default function RecetteScreen() {
   }, []);
 
   //*--------------------HANDLE PREPARATION----------------
-  const handleLongPressPreparation = useCallback(
+  const handlePressPreparation = useCallback(
     (index) => {
       if (isEditing) {
         setEditingPreparationIndex(index);
       }
     },
     [isEditing],
-  );
-  const handlePressPreparation = useCallback(
-    (index) => {
-      if (isEditing && editingPreparationIndex === index) {
-        setEditingPreparationIndex(null);
-      }
-    },
-    [editingPreparationIndex, isEditing],
   );
   const handlePreparationChange = useCallback((index, value) => {
     setPreparation((prevPreparation) => {
@@ -156,12 +151,11 @@ export default function RecetteScreen() {
       <View key={i} style={styles.ingredientItem}>
         {isEditing ? (
           <TouchableOpacity
-            onLongPress={() => handleLongPressIngredient(i)}
             onPress={() => handlePressIngredient(i)}
             style={styles.ingredientTouchable}
           >
             {editingIngredientIndex === i && isEditing ? (
-              <>
+              <View style={styles.updateContainer}>
                 <TextInput
                   style={styles.ingredientInput}
                   value={data.ingredient}
@@ -196,7 +190,7 @@ export default function RecetteScreen() {
                     <Text style={styles.removeButton}>Supprimer</Text>
                   </TouchableOpacity>
                 </View>
-              </>
+              </View>
             ) : (
               <Text style={styles.ingredient}>
                 - {data.ingredient} {data.quantite} {data.unite}
@@ -222,12 +216,11 @@ export default function RecetteScreen() {
       <View key={j} style={styles.preparationItem}>
         {isEditing ? (
           <TouchableOpacity
-            onLongPress={() => handleLongPressPreparation(j)}
             onPress={() => handlePressPreparation(j)}
             style={styles.preparationTouchable}
           >
             {editingPreparationIndex === j && isEditing ? (
-              <>
+              <View style={styles.updateContainer}>
                 <ScrollView>
                   <TextInput
                     style={styles.consigneInput}
@@ -248,7 +241,7 @@ export default function RecetteScreen() {
                     <Text style={styles.removeButton}>Supprimer</Text>
                   </TouchableOpacity>
                 </View>
-              </>
+              </View>
             ) : (
               <Text style={styles.consigne}>
                 {j + 1}. {data.consigne}
@@ -270,14 +263,36 @@ export default function RecetteScreen() {
     handleRemovePreparation,
   ]);
 
+  //*---------------------GET CATEGORIES-------------------------------------
   const [categories, setCategories] = useState([]);
   useEffect(() => {
     fetch(`${urlBackend}/categorie`)
       .then((response) => response.json())
       .then((data) => setCategories(data.categoryInfo));
   }, []);
-  const [message, setMessage] = useState(null);
 
+  //*---------------------CATEGORIES RENDER----------------------------------
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const renderCategories = useMemo(() => {
+    return categories.map((category) => (
+      <TouchableOpacity
+        key={category._id}
+        onPress={() => {
+          setSelectedCategory(category), setIsCategoryChosen(true);
+        }}
+        style={[
+          styles.categoryButton,
+          selectedCategory === category ? styles.selectedCategory : null,
+          { backgroundColor: category.color },
+        ]}
+      >
+        <Text style={styles.categoryText}>{category.name}</Text>
+      </TouchableOpacity>
+    ));
+  }, [categories, selectedCategory]);
+
+  //*------------------NOTES VALIDATION--------------------------------------
+  const [message, setMessage] = useState(null);
   const handleValidationNotes = async () => {
     try {
       const response = await fetch(
@@ -308,24 +323,79 @@ export default function RecetteScreen() {
   };
 
   //*-------------------------RENDER--------------------------------------------
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#ec6e5b" />
+      </View>
+    );
+  }
+
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[
+        styles.container,
+        [
+          isEditing
+            ? {
+                // borderColor: '#ec6e5b',
+                // borderWidth: 5,
+                backgroundColor: '#e0dedf',
+              }
+            : { backgroundColor: 'white' },
+        ],
+      ]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
     >
       <ScrollView contentContainerStyle={styles.scrollViewContent}>
+        {/* ---------------------------BOUTONS--------------------------- */}
+        <View style={styles.bunttonContainer}>
+          <TouchableOpacity
+            onPress={handleEdition}
+            style={styles.button}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.textButton}>
+              {isEditing ? "Terminer l'édition" : 'Editer'}
+            </Text>
+          </TouchableOpacity>
+          {isCategoryChosen & !isEditing ? (
+            <TouchableOpacity
+              onPress={() => {
+                setLoading(true);
+                handleValidation(
+                  {
+                    tempsPreparation,
+                    tempsCuisson,
+                    titre,
+                    ingredients,
+                    preparation,
+                    nombrePersonnes,
+                    image: selectedImage,
+                    categorie: selectedCategory._id,
+                  },
+                  setShowConfetti,
+                  userToken,
+                ).finally(() => setLoading(false));
+              }}
+              style={styles.button}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.textButton}>Ajouter au cahier!</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+
         {/* ---------------------------TITRE--------------------------- */}
         {isEditing ? (
-          <ScrollView>
-            <TextInput
-              multiline
-              numberOfLines={3}
-              style={styles.titleInput}
-              value={titre}
-              onChangeText={setTitre}
-            />
-          </ScrollView>
+          <TextInput
+            multiline
+            numberOfLines={1}
+            style={styles.titleInput}
+            value={titre}
+            onChangeText={setTitre}
+          />
         ) : (
           <Text style={styles.title}>{titre}</Text>
         )}
@@ -381,8 +451,22 @@ export default function RecetteScreen() {
             )}
           </View>
         </View>
+        {/* ------------------------CATEGORIES--------------------------- */}
+        <View style={styles.categoriesContainer}>
+          {isEditing ? renderCategories : null}
+        </View>
         {/* ---------------------------IMAGE--------------------------- */}
-        <View style={[styles.pictureBorder, { height: screenHeight * 0.24 }]}>
+        <View
+          style={[
+            styles.pictureBorder,
+            { height: screenHeight * 0.24 },
+            [
+              selectedCategory
+                ? { backgroundColor: selectedCategory.color }
+                : { backgroundColor: '#ec6e5b' },
+            ],
+          ]}
+        >
           <View style={styles.pictureContainer}>
             {isEditing && (
               <TouchableOpacity
@@ -498,36 +582,6 @@ export default function RecetteScreen() {
           style={styles.separateur}
           source={require('../assets/separateur.png')}
         />
-        {/* ---------------------------BOUTONS--------------------------- */}
-        <TouchableOpacity
-          onPress={handleEdition}
-          style={styles.button}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.textButton}>
-            {isEditing ? "Terminer l'édition" : 'Editer'}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() =>
-            handleValidation(
-              {
-                tempsPreparation,
-                tempsCuisson,
-                titre,
-                ingredients,
-                preparation,
-                nombrePersonnes,
-                image: selectedImage,
-              },
-              setShowConfetti,
-            )
-          }
-          style={styles.button}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.textButton}>Ajouter au cahier!</Text>
-        </TouchableOpacity>
       </ScrollView>
       {showConfetti && (
         <ConfettiCannon
@@ -545,19 +599,17 @@ export default function RecetteScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'flex-start',
   },
   scrollViewContent: {
     alignItems: 'center',
     justifyContent: 'flex-start',
-    paddingBottom: 30,
+    paddingBottom: 60,
   },
   title: {
     fontFamily: 'Dancing',
     width: '90%',
-    marginTop: Platform.select({ ios: 40, android: 20 }),
     fontSize: 35,
     paddingHorizontal: 5,
     textAlign: 'center',
@@ -566,7 +618,6 @@ const styles = StyleSheet.create({
   titleInput: {
     fontFamily: 'Dancing',
     width: '90%',
-    marginTop: Platform.select({ ios: 40, android: 20 }),
     fontSize: 35,
     paddingHorizontal: 5,
     textAlign: 'center',
@@ -597,13 +648,13 @@ const styles = StyleSheet.create({
     marginLeft: 2,
     fontSize: 20,
     fontFamily: 'Dancing',
-    width: '60%',
+    // width: '60%',
   },
   pictureBorder: {
     width: '85%',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'red',
+    backgroundColor: '#ec6e5b',
     marginTop: '2%',
   },
   pictureContainer: {
@@ -716,6 +767,10 @@ const styles = StyleSheet.create({
     fontSize: 23,
     fontFamily: 'Dancing',
   },
+  updateContainer: {
+    marginTop: 20,
+    marginBottom: 40,
+  },
   consigneInput: {
     fontSize: 23,
     fontFamily: 'Dancing',
@@ -746,11 +801,18 @@ const styles = StyleSheet.create({
     width: '90%',
     marginVertical: 5,
   },
+  bunttonContainer: {
+    width: '80%',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 15,
+    marginTop: Platform.select({ ios: 40, android: 30 }),
+  },
   button: {
     alignItems: 'center',
     paddingTop: 8,
-    width: '80%',
-    marginTop: 25,
+    width: '100%',
     backgroundColor: '#ec6e5b',
     borderRadius: 10,
   },
@@ -770,5 +832,33 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: 'red',
     marginTop: 10,
+  },
+  categoriesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    width: '90%',
+    marginTop: '2%',
+  },
+  categoryButton: {
+    borderColor: '#000000',
+    borderWidth: 1,
+    padding: 10,
+    margin: 5,
+    borderRadius: 10,
+  },
+  selectedCategory: {
+    borderColor: '#ec6e5b',
+    borderWidth: 2,
+  },
+  categoryText: {
+    fontFamily: 'Dancing',
+    fontSize: 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'black',
   },
 });
