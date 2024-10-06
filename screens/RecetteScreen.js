@@ -33,7 +33,7 @@ export default function RecetteScreen() {
 
   const recetteInfo = useSelector((state) => state.recette.value);
   const userToken = useSelector((state) => state.user.value.token);
-
+  console.log(recetteInfo);
   const recette = recetteInfo.mindeeInfo;
   const [nombrePersonnes, setNombrePersonnes] = useState(
     recette.nombrepersonnes.value,
@@ -55,7 +55,7 @@ export default function RecetteScreen() {
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [notes, setNotes] = useState('-Appui long pour éditer les notes!');
   const [isCategoryChosen, setIsCategoryChosen] = useState(false);
-  const [loading, setLoading] = useState(false); // État pour gérer l'affichage de l'écran d'attente
+  const [loading, setLoading] = useState(false);
 
   const screenHeight = Dimensions.get('window').height;
   const confettiRef = useRef(null);
@@ -475,6 +475,7 @@ export default function RecetteScreen() {
                     setSelectedImage,
                     setIsImageReplaced,
                     uploadImageToBackend,
+                    selectedImage,
                   )
                 }
               >

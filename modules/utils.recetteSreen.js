@@ -1,6 +1,8 @@
 import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { urlBackend } from '../var';
+import { useSelector } from 'react-redux';
+let pictureUrl = [];
 
 export const handleValidation = async (data, setShowConfetti, userToken) => {
   try {
@@ -72,7 +74,11 @@ export const selectImage = async (
   setSelectedImage,
   setIsImageReplaced,
   uploadImageToBackend,
+  imageUrlReducer,
 ) => {
+  pictureUrl.push(imageUrlReducer);
+  if (pictureUrl[0] === null || pictureUrl[0] === 'undefined') pictureUrl.pop();
+  console.log('pictureUrl', pictureUrl);
   const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (status !== 'granted') {
     Alert.alert(
@@ -98,6 +104,14 @@ export const selectImage = async (
     if (selectedAsset.uri) {
       setSelectedImage(selectedAsset.uri);
       setIsImageReplaced(true);
+
+      // suppress previous picture from cloudinary
+      if (pictureUrl.length > 0) {
+        //console.log('suppression', pictureUrl[0]);
+        await deleteImageFromCloudinary(pictureUrl[0]);
+        pictureUrl.shift();
+      }
+
       const imageUrl = await uploadImageToBackend(selectedAsset.uri);
       setSelectedImage(imageUrl);
     }
@@ -120,14 +134,45 @@ export const uploadImageToBackend = async (imageUri) => {
     if (response.ok) {
       const result = await response.json();
       if (result.result) {
-        return result.url; // Retourner l'URL de l'image
+        return result.url;
       } else {
-        console.error('Error uploading image:', result.error);
+        console.error('Error uploading image 139:', result.error);
       }
     } else {
-      console.error('Error uploading image:', response.statusText);
+      console.error('Error uploading image 142:', response.statusText);
     }
   } catch (error) {
-    console.error('Error uploading image:', error);
+    Alert.alert("Problème lors de l'envoi de l'image");
+    console.log('Error uploading image 145:', error);
+  }
+};
+
+const deleteImageFromCloudinary = async (url) => {
+  try {
+    const encodedUrl = encodeURIComponent(url);
+    console.log('Encoded URL:', encodedUrl);
+
+    const response = await fetch(
+      `${urlBackend}/recette/cloudinary/delete/${encodedUrl}`,
+      {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      },
+    );
+
+    // Afficher la réponse brute pour le diagnostic
+    const textResponse = await response.text();
+    //console.log('Raw response:', textResponse);
+
+    if (response.ok) {
+      const result = JSON.parse(textResponse);
+      console.log('Image deleted:', result.message);
+    } else {
+      console.error('Error deleting image:', textResponse);
+    }
+  } catch (error) {
+    console.error('Error deleting image:', error);
   }
 };

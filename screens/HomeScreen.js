@@ -9,21 +9,19 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useDispatch } from 'react-redux';
-import {login } from '../reducers/user';
-import {urlBackend} from '../var'
+import { login } from '../reducers/user';
+import { urlBackend } from '../var';
 
 export default function HomeScreen({ navigation }) {
   const dispatch = useDispatch();
 
-  const [username, setusername] = useState('');
-  const [password,setPassword]=useState('')
-
-  
+  const [username, setusername] = useState('a');
+  const [password, setPassword] = useState('z');
 
   const handleConnection = () => {
     fetch(`${urlBackend}/signin`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         username: username,
         password: password,
@@ -32,36 +30,55 @@ export default function HomeScreen({ navigation }) {
       .then((response) => response.json())
       .then((data) => {
         if (data.result) {
-          console.log(data.userInfo)
+          console.log(data.userInfo);
           dispatch(
             login({
               username: data.userInfo.username,
               email: data.userInfo.email,
               token: data.userInfo.token,
-            })
+            }),
           );
           navigation.navigate('TabNavigator');
         } else {
-          console.warn("something went wrong", data.error);
+          console.warn('something went wrong', data.error);
           setErrorMessage(data.error);
         }
       });
   };
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <Text style={styles.title}>Mon cahier de "Recettes"</Text>
-      <Image style={styles.image} source={require('../assets/home-image.jpg')} />
-    
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <Text style={styles.title}>Mon cahier de "Recettes"</Text>
+      <Image
+        style={styles.image}
+        source={require('../assets/home-image.jpg')}
+      />
 
-      <TextInput placeholder="username" onChangeText={(value) => setusername(value)} value={username} style={styles.input} />
-      <TextInput placeholder="password" onChangeText={(value) => setPassword(value)} value={password} style={styles.input} />
-   
-      <TouchableOpacity onPress={() => handleConnection()} style={styles.button} activeOpacity={0.8}>
+      <TextInput
+        placeholder="username"
+        onChangeText={(value) => setusername(value)}
+        value={username}
+        style={styles.input}
+      />
+      <TextInput
+        placeholder="password"
+        onChangeText={(value) => setPassword(value)}
+        value={password}
+        style={styles.input}
+      />
+
+      <TouchableOpacity
+        onPress={() => handleConnection()}
+        style={styles.button}
+        activeOpacity={0.8}
+      >
         <Text style={styles.textButton}>Capture!</Text>
       </TouchableOpacity>
     </KeyboardAvoidingView>
-  )
+  );
 }
 
 const styles = StyleSheet.create({
@@ -77,13 +94,12 @@ const styles = StyleSheet.create({
   },
   title: {
     width: '70%',
-    marginTop:50,
-    marginBottom:20,
-    textAlign:"center",
-    fontFamily:"Dancing",
+    marginTop: 50,
+    marginBottom: 20,
+    textAlign: 'center',
+    fontFamily: 'Dancing',
     fontSize: 50,
     fontWeight: '600',
-    
   },
   input: {
     width: '80%',
