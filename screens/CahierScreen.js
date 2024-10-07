@@ -12,11 +12,26 @@ import {
   ScrollView,
   Image,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { urlBackend } from '../var';
 import { regle3 } from '../modules/utils.CahierScreen';
+import {
+  addRecette,
+  addImage,
+  addNotes,
+  addCategory,
+} from '../reducers/recette';
 
 export default function CahierScreen() {
   console.log('-------------------CAHIER-----------------------');
+
+  ////////////////////////////////////////////
+  const navigation = useNavigation();
+
+  const goToScreenB = () => {
+    navigation.navigate('Recette', { from: 'C' });
+  };
+  ////////////////////////////////////////////
   const userToken = useSelector((state) => state.user.value.token);
   const [recettes, setRecettes] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -25,6 +40,10 @@ export default function CahierScreen() {
   const [loading, setLoading] = useState(false);
   const [nombrePersonnes, setNombrePersonnes] = useState({}); //{"recette._id": recette.nbrePerson,...}
   const opacityAnimations = useRef([]);
+  const dispatch = useDispatch();
+
+  const recetteInfo = useSelector((state) => state.recette.value);
+
   //* ---------------------Get Category-----------------------------
   useEffect(() => {
     fetch(`${urlBackend}/categorie`)
@@ -97,18 +116,42 @@ export default function CahierScreen() {
     }));
   };
   //*----------Send Reciepe to ScreenRecette-------------
-  const handleShow = (recette, nbrePerson) => {
+  const handleShow = (recette, image, nbrePerson) => {
     const key = recette._id;
+    console.log('recette.nombrePersonnes.value', recette.nombrePersonnes);
     //---------change quantities if needed---------
     if (key in nbrePerson) {
       const personForReciepe = nbrePerson[key];
       if (personForReciepe !== Number(recette.nombrePersonnes)) {
         recette.ingredients = regle3(recette, personForReciepe);
+        recette.nombrePersonnes = personForReciepe;
       }
     } else {
       console.log(` "${key}" is false!!!`);
     }
-    console.log(recette);
+    //console.log(recette);
+    const formattedRecette = {
+      cuissontime: { value: recette.tempsCuisson },
+      ingredients: recette.ingredients.map((ingredient) => ({
+        ingredient: ingredient.ingredient,
+        quantite: ingredient.quantite,
+        unite: ingredient.unite,
+      })),
+      nombrepersonnes: { value: recette.nombrePersonnes },
+      preparation: recette.preparation.map((step) => ({
+        consigne: step.consigne,
+        index: step.index,
+      })),
+      preparationtime: { value: recette.tempsPreparation },
+      titre: { value: recette.titre },
+    };
+
+    dispatch(addImage(image));
+    dispatch(addNotes(recette.notes));
+    dispatch(addCategory(recette.categorie));
+    dispatch(addRecette(formattedRecette));
+    //console.log('apres dispatch', recetteInfo);
+    goToScreenB();
   };
   //* ----------------------------render categories ----------------------------
   const categoriesList = categories.map((data) => (
@@ -137,7 +180,9 @@ export default function CahierScreen() {
                 ]}
               >
                 <TouchableOpacity
-                  onPress={() => handleShow(recette, nombrePersonnes)}
+                  onPress={() =>
+                    handleShow(recette, recette.image, nombrePersonnes)
+                  }
                 >
                   <Text style={styles.recetteTexte}>{recette.titre}</Text>
                 </TouchableOpacity>

@@ -82,7 +82,7 @@ export default function RecoScreen() {
         setLoading(false);
 
         // Redirection CahierScreen
-        navigation.navigate('Recette');
+        navigation.navigate('Recette', { from: 'A' });
       }
     } catch (error) {
       console.error('Error taking picture:', error);
@@ -114,6 +114,12 @@ export default function RecoScreen() {
 
   //! ---------------Remove to test with camera--------------------------
   dispatch(addRecette(mindeeResponse));
+
+  /////////////////////////////////////
+  const goToScreenB = () => {
+    navigation.navigate('Recette', { from: 'A' });
+  };
+  ////////////////////////////////////////
 
   return (
     <Camera
@@ -152,6 +158,9 @@ export default function RecoScreen() {
 
       <View style={styles.snapContainer}>
         <TouchableOpacity onPress={() => cameraRef.current && takePicture()}>
+          <FontAwesome name="circle-thin" size={95} color="#ffffff" />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => goToScreenB()}>
           <FontAwesome name="circle-thin" size={95} color="#ffffff" />
         </TouchableOpacity>
       </View>

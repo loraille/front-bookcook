@@ -5,7 +5,7 @@ const initialState = {
     mindeeInfo: {},
     image: null,
     notes: null,
-    category: null,
+    category: {},
   },
 };
 
@@ -17,13 +17,13 @@ export const recetteSlice = createSlice({
       state.value.mindeeInfo = action.payload;
     },
     addImage: (state, action) => {
-      state.value.image = action.payload.image;
+      state.value.image = action.payload;
     },
     addNotes: (state, action) => {
-      state.value.notes = action.payload.notes;
+      state.value.notes = action.payload;
     },
     addCategory: (state, action) => {
-      state.value.category = action.payload.category;
+      state.value.category = action.payload;
     },
   },
 });
