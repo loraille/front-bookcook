@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Text } from 'react-native';
 import { useRoute } from '@react-navigation/native';
 import ComponentFromA from '../modules/recetteFromScan';
 import ComponentFromC from '../modules/recetteFromBdd';
@@ -22,7 +22,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-start',
     width: '100%',
-    backgroundColor: 'red',
+    backgroundColor: 'black',
   },
 });
 

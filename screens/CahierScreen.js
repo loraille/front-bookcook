@@ -25,13 +25,12 @@ import {
 export default function CahierScreen() {
   console.log('-------------------CAHIER-----------------------');
 
-  ////////////////////////////////////////////
   const navigation = useNavigation();
 
   const goToScreenB = () => {
     navigation.navigate('Recette', { from: 'C' });
   };
-  ////////////////////////////////////////////
+
   const userToken = useSelector((state) => state.user.value.token);
   const [recettes, setRecettes] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -39,6 +38,10 @@ export default function CahierScreen() {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [loading, setLoading] = useState(false);
   const [nombrePersonnes, setNombrePersonnes] = useState({}); //{"recette._id": recette.nbrePerson,...}
+  const [isReciepeLongPressed, setIsReciepeLongPressed] = useState(false);
+  const [isOkToSuppressReciepe, setIsOkToSuppressReciepe] = useState(false);
+  const [recipeToDelete, setRecipeToDelete] = useState(null);
+
   const opacityAnimations = useRef([]);
   const dispatch = useDispatch();
 
@@ -50,6 +53,7 @@ export default function CahierScreen() {
       .then((response) => response.json())
       .then((data) => setCategories(data.categoryInfo));
   }, []);
+
   //* --------------------Show reciepes-----------------------------
   const handleShowReciepies = (datas) => {
     if (selectedCategory && selectedCategory._id === datas._id) {
@@ -57,19 +61,27 @@ export default function CahierScreen() {
       setRecettes([]);
       setIsReciepeFound(false);
     } else {
-      const category = datas.name;
       setSelectedCategory(datas);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedCategory) {
+      const category = selectedCategory.name;
       setLoading(true);
 
       fetch(`${urlBackend}/recettes/${userToken}/${category}`)
         .then((response) => response.json())
         .then((data) => {
           if (data && data.userInfo && data.userInfo.recettes) {
-            setRecettes(data.userInfo.recettes);
+            let sortedRecettes = data.userInfo.recettes.sort((a, b) =>
+              a.titre.localeCompare(b.titre),
+            );
+            setRecettes(sortedRecettes);
             setIsReciepeFound(true);
-            startAnimations(data.userInfo.recettes);
+            startAnimations(sortedRecettes);
             //*---convert []->{}---
-            const initialNombrePersonnes = data.userInfo.recettes.reduce(
+            const initialNombrePersonnes = sortedRecettes.reduce(
               (acc, recette) => {
                 acc[recette._id] = parseInt(recette.nombrePersonnes, 10);
                 return acc;
@@ -88,7 +100,8 @@ export default function CahierScreen() {
           setLoading(false);
         });
     }
-  };
+  }, [selectedCategory]);
+
   //*-------------Animation-------------
   const startAnimations = (recettes) => {
     opacityAnimations.current = recettes.map(() => new Animated.Value(0));
@@ -101,35 +114,21 @@ export default function CahierScreen() {
       }).start();
     });
   };
-  //* -------increment-------
-  const handleIncrement = (recetteId) => {
-    setNombrePersonnes((prev) => ({
-      ...prev,
-      [recetteId]: prev[recetteId] + 1,
-    }));
-  };
-  //* -------decrement-------
-  const handleDecrement = (recetteId) => {
-    setNombrePersonnes((prev) => ({
-      ...prev,
-      [recetteId]: prev[recetteId] > 1 ? prev[recetteId] - 1 : 1,
-    }));
-  };
-  //*----------Send Reciepe to ScreenRecette-------------
-  const handleShow = (recette, image, nbrePerson) => {
+
+  //*----------Modify qty--------------------------------
+  const modifyQty = (recette, nbrePerson) => {
     const key = recette._id;
-    console.log('recette.nombrePersonnes.value', recette.nombrePersonnes);
     //---------change quantities if needed---------
     if (key in nbrePerson) {
       const personForReciepe = nbrePerson[key];
       if (personForReciepe !== Number(recette.nombrePersonnes)) {
+        console.log('modify');
         recette.ingredients = regle3(recette, personForReciepe);
         recette.nombrePersonnes = personForReciepe;
       }
     } else {
       console.log(` "${key}" is false!!!`);
     }
-    //console.log(recette);
     const formattedRecette = {
       cuissontime: { value: recette.tempsCuisson },
       ingredients: recette.ingredients.map((ingredient) => ({
@@ -146,13 +145,49 @@ export default function CahierScreen() {
       titre: { value: recette.titre },
     };
 
-    dispatch(addImage(image));
+    dispatch(addImage(recette.image));
     dispatch(addNotes(recette.notes));
     dispatch(addCategory(recette.categorie));
     dispatch(addRecette(formattedRecette));
-    //console.log('apres dispatch', recetteInfo);
+  };
+
+  //*----------Send Reciepe to ScreenRecette-------------
+  const handleShow = (recette, newNombrePersonnes) => {
+    modifyQty(recette, newNombrePersonnes);
     goToScreenB();
   };
+
+  const showSuppressReciepe = (recette) => {
+    setRecipeToDelete(recette);
+  };
+
+  const cancelDeleteRecipe = () => {
+    setRecipeToDelete(null);
+  };
+
+  const handleDeleteRecipe = async () => {
+    try {
+      const response = await fetch(
+        `${urlBackend}/recette/${recipeToDelete._id}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+      const data = await response.json();
+      console.log(data.message);
+      // Mettre à jour la liste des recettes après la suppression
+      setRecettes(
+        recettes.filter((recette) => recette._id !== recipeToDelete._id),
+      );
+      setRecipeToDelete(null);
+    } catch (error) {
+      console.error('Error deleting recipe:', error);
+    }
+  };
+
   //* ----------------------------render categories ----------------------------
   const categoriesList = categories.map((data) => (
     <View key={data._id}>
@@ -172,42 +207,37 @@ export default function CahierScreen() {
         <View>
           {isReciepeFound ? (
             recettes.map((recette, index) => (
-              <Animated.View
-                key={recette._id}
-                style={[
-                  styles.recette,
-                  { opacity: opacityAnimations.current[index] },
-                ]}
-              >
-                <TouchableOpacity
-                  onPress={() =>
-                    handleShow(recette, recette.image, nombrePersonnes)
-                  }
+              <View key={recette._id} style={styles.recetteContainer}>
+                <Animated.View
+                  style={[{ opacity: opacityAnimations.current[index] }]}
                 >
-                  <Text style={styles.recetteTexte}>{recette.titre}</Text>
-                </TouchableOpacity>
-                <View style={styles.personContainer}>
                   <TouchableOpacity
-                    onPress={() => handleDecrement(recette._id)}
+                    onPress={() => handleShow(recette, nombrePersonnes)}
+                    onLongPress={() => showSuppressReciepe(recette)}
                   >
-                    <Image
-                      style={styles.image}
-                      source={require('../assets/moins.png')}
-                    />
+                    <View style={styles.recette}>
+                      <Text style={styles.recetteTexte}>{recette.titre}</Text>
+                    </View>
                   </TouchableOpacity>
-                  <Text style={styles.person} numberOfLines={1}>
-                    {nombrePersonnes[recette._id]} pers.
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => handleIncrement(recette._id)}
-                  >
-                    <Image
-                      style={styles.image}
-                      source={require('../assets/plus.png')}
-                    />
-                  </TouchableOpacity>
-                </View>
-              </Animated.View>
+                </Animated.View>
+
+                {recipeToDelete && recipeToDelete._id === recette._id && (
+                  <View style={styles.deleteContainer}>
+                    <TouchableOpacity
+                      onPress={cancelDeleteRecipe}
+                      // style={styles.cancelButton}
+                    >
+                      <Text style={styles.cancelButtonText}>Annuler</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={handleDeleteRecipe}
+                      // style={styles.deleteButton}
+                    >
+                      <Text style={styles.deleteButtonText}>Supprimer</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
             ))
           ) : (
             <Text style={styles.noRecipeText}>Pas encore de recette!</Text>
@@ -216,6 +246,7 @@ export default function CahierScreen() {
       )}
     </View>
   ));
+
   //*-------------------------------RENDER--------------------------------
   return (
     <KeyboardAvoidingView
@@ -229,6 +260,7 @@ export default function CahierScreen() {
     </KeyboardAvoidingView>
   );
 }
+
 //* -------------------------------STYLES---------------------------------
 const styles = StyleSheet.create({
   container: {
@@ -270,11 +302,14 @@ const styles = StyleSheet.create({
   loader: {
     marginTop: 10,
   },
+  recetteContainer: {
+    flexDirection: 'column',
+  },
   recette: {
     width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     padding: 5,
     marginVertical: 5,
     backgroundColor: '#f0f0f0',
@@ -285,8 +320,11 @@ const styles = StyleSheet.create({
   recetteTexte: {
     fontFamily: 'Dancing',
     fontSize: 22,
-    width: 150,
+    paddingHorizontal: 2,
+
+    justifyContent: 'center',
     flexWrap: 'wrap',
+    textAlign: 'center',
   },
   noRecipeText: {
     fontSize: 22,
@@ -308,5 +346,28 @@ const styles = StyleSheet.create({
     height: 35,
     width: 35,
     marginHorizontal: 5,
+  },
+  deleteContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+  cancelButton: {
+    backgroundColor: 'gray',
+    padding: 10,
+    borderRadius: 5,
+  },
+  cancelButtonText: {
+    color: 'red',
+    fontSize: 20,
+  },
+  deleteButton: {
+    backgroundColor: 'red',
+    padding: 10,
+    borderRadius: 5,
+  },
+  deleteButtonText: {
+    color: 'red',
+    fontSize: 20,
   },
 });

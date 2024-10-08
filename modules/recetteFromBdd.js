@@ -71,7 +71,6 @@ const RecetteFromBdd = () => {
       setIngredients(recette.ingredients);
       setPreparation(recette.preparation);
       setSelectedImage(recetteInfo.image);
-      console.log(recette.notes);
       if (recette.notes === null || recette.notes === undefined)
         setNotes('-Appui long pour éditer les notes!');
     }, [recetteInfo]),

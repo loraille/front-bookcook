@@ -27,7 +27,7 @@ export default function RecoScreen() {
   const [features, setFeatures] = useState(null);
   const [loading, setLoading] = useState(false);
   const email = useSelector((state) => state.user.value.email);
-  let cameraRef = useRef(null);
+  const cameraRef = useRef(null);
 
   useEffect(() => {
     (async () => {
@@ -37,6 +37,10 @@ export default function RecoScreen() {
       }
     })();
   }, []);
+
+  useEffect(() => {
+    dispatch(addRecette(mindeeResponse));
+  }, [dispatch]);
 
   const takePicture = async () => {
     try {
@@ -112,14 +116,9 @@ export default function RecoScreen() {
     );
   }
 
-  //! ---------------Remove to test with camera--------------------------
-  dispatch(addRecette(mindeeResponse));
-
-  /////////////////////////////////////
   const goToScreenB = () => {
     navigation.navigate('Recette', { from: 'A' });
   };
-  ////////////////////////////////////////
 
   return (
     <Camera
@@ -160,7 +159,7 @@ export default function RecoScreen() {
         <TouchableOpacity onPress={() => cameraRef.current && takePicture()}>
           <FontAwesome name="circle-thin" size={95} color="#ffffff" />
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => goToScreenB()}>
+        <TouchableOpacity onPress={goToScreenB}>
           <FontAwesome name="circle-thin" size={95} color="#ffffff" />
         </TouchableOpacity>
       </View>
