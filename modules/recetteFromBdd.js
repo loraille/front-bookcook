@@ -35,8 +35,11 @@ const RecetteFromBdd = () => {
 
   const recetteInfo = useSelector((state) => state.recette.value);
   const userToken = useSelector((state) => state.user.value.token);
-
+  // console.log(recetteInfo);
   const recette = recetteInfo.mindeeInfo;
+
+  const [recetteId, setRecetteId] = useState(recetteInfo.id);
+
   const [nombrePersonnes, setNombrePersonnes] = useState(
     recette.nombrepersonnes.value,
   );
@@ -47,7 +50,6 @@ const RecetteFromBdd = () => {
   const [titre, setTitre] = useState(recette.titre.value);
   const [ingredients, setIngredients] = useState(recette.ingredients);
   const [preparation, setPreparation] = useState(recette.preparation);
-
   const [showConfetti, setShowConfetti] = useState(false);
   const [selectedImage, setSelectedImage] = useState(recetteInfo.image);
   const [isImageReplaced, setIsImageReplaced] = useState(false);
@@ -55,7 +57,7 @@ const RecetteFromBdd = () => {
   const [editingIngredientIndex, setEditingIngredientIndex] = useState(null);
   const [editingPreparationIndex, setEditingPreparationIndex] = useState(null);
   const [isEditingNotes, setIsEditingNotes] = useState(false);
-  const [notes, setNotes] = useState('-Appui long pour éditer les notes!');
+  const [notes, setNotes] = useState(recette.notes);
   const [isCategoryChosen, setIsCategoryChosen] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -64,6 +66,7 @@ const RecetteFromBdd = () => {
 
   useFocusEffect(
     useCallback(() => {
+      setRecetteId(recetteInfo.id);
       setNombrePersonnes(recette.nombrepersonnes.value);
       setTempsPreparation(recette.preparationtime.value);
       setTempsCuisson(recette.cuissontime.value);
@@ -71,8 +74,11 @@ const RecetteFromBdd = () => {
       setIngredients(recette.ingredients);
       setPreparation(recette.preparation);
       setSelectedImage(recetteInfo.image);
-      if (recette.notes === null || recette.notes === undefined)
+      if (recetteInfo.notes === undefined) {
         setNotes('-Appui long pour éditer les notes!');
+      } else {
+        setNotes(recetteInfo.notes);
+      }
     }, [recetteInfo]),
   );
 
@@ -306,21 +312,17 @@ const RecetteFromBdd = () => {
       </TouchableOpacity>
     ));
   }, [categories, selectedCategory]);
-
   //*------------------NOTES VALIDATION--------------------------------------
   const [message, setMessage] = useState(null);
-  const handleValidationNotes = async () => {
+  const handleValidationNotes = async (id) => {
     try {
-      const response = await fetch(
-        `${urlBackend}/recette/notes/66f563e01d39a4bd4e068af9`,
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ notes }),
+      const response = await fetch(`${urlBackend}/recette/notes/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      );
+        body: JSON.stringify({ notes }),
+      });
 
       if (!response.ok) {
         throw new Error('Network response was not ok');
@@ -418,10 +420,12 @@ const RecetteFromBdd = () => {
         {/* ---------------------------INFOS--------------------------- */}
         <View style={styles.dispo1}>
           <View style={styles.dispo2}>
-            <Image
-              style={styles.infos}
-              source={require('../assets/person.png')}
-            />
+            <TouchableOpacity style={styles.infos2}>
+              <Image
+                style={styles.person}
+                source={require('../assets/person.png')}
+              />
+            </TouchableOpacity>
             <Text style={styles.infosText}> :</Text>
             {isEditing ? (
               <TextInput
@@ -548,7 +552,7 @@ const RecetteFromBdd = () => {
           source={require('../assets/separateur.png')}
         />
         {/* ---------------------------PREPARATION--------------------------- */}
-        <Text style={styles.preparationTitre}>Préparation</Text>
+        <Text style={styles.preparationTitre}>Préparation:</Text>
         <View style={styles.preparationContainer}>{renderPreparations}</View>
         {isEditing && (
           <TouchableOpacity
@@ -581,7 +585,7 @@ const RecetteFromBdd = () => {
                   />
                   <TouchableOpacity
                     onPress={() => {
-                      handleValidationNotes();
+                      handleValidationNotes(recetteId);
                       setIsEditingNotes(false);
                     }}
                   >
@@ -644,6 +648,7 @@ const styles = StyleSheet.create({
     marginTop: '2%',
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     width: '90%',
   },
   dispo2: {
@@ -656,6 +661,19 @@ const styles = StyleSheet.create({
     height: 35,
     objectFit: 'scale-down',
     width: '33%',
+  },
+  person: {
+    height: 35,
+    objectFit: 'scale-down',
+    width: '85%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    textAlign: 'center',
+  },
+  infos2: {
+    height: 40,
+    width: '40%',
+    alignItems: 'center',
   },
   infosText: {
     marginLeft: 2,

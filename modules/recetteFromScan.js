@@ -317,6 +317,13 @@ const RecetteFromScan = () => {
   };
 
   //* -----------------------RENDER-----------------------------------
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#ec6e5b" />
+      </View>
+    );
+  }
   return (
     <KeyboardAvoidingView
       style={[

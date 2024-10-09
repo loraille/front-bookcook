@@ -1,7 +1,6 @@
 import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { urlBackend } from '../var';
-import { useSelector } from 'react-redux';
 let pictureUrl = [];
 
 export const handleValidation = async (data, setShowConfetti, userToken) => {
@@ -21,7 +20,7 @@ export const handleValidation = async (data, setShowConfetti, userToken) => {
         console.log('saved on BDD!', responseData.data.titre);
 
         const responseUser = await fetch(
-          `${urlBackend}/recette/${userToken}/${newRecipeId}`,
+          `${urlBackend}/newRecette/${userToken}/${newRecipeId}`,
           {
             method: 'PUT',
             headers: {

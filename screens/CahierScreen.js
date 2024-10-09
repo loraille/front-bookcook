@@ -20,6 +20,7 @@ import {
   addImage,
   addNotes,
   addCategory,
+  getId,
 } from '../reducers/recette';
 
 export default function CahierScreen() {
@@ -116,19 +117,8 @@ export default function CahierScreen() {
   };
 
   //*----------Modify qty--------------------------------
-  const modifyQty = (recette, nbrePerson) => {
-    const key = recette._id;
-    //---------change quantities if needed---------
-    if (key in nbrePerson) {
-      const personForReciepe = nbrePerson[key];
-      if (personForReciepe !== Number(recette.nombrePersonnes)) {
-        console.log('modify');
-        recette.ingredients = regle3(recette, personForReciepe);
-        recette.nombrePersonnes = personForReciepe;
-      }
-    } else {
-      console.log(` "${key}" is false!!!`);
-    }
+  const modifyRecetteReducer = (recette) => {
+    console.log('modify');
     const formattedRecette = {
       cuissontime: { value: recette.tempsCuisson },
       ingredients: recette.ingredients.map((ingredient) => ({
@@ -144,16 +134,15 @@ export default function CahierScreen() {
       preparationtime: { value: recette.tempsPreparation },
       titre: { value: recette.titre },
     };
-
+    console.log('recette._id cdr', recette._id);
+    dispatch(getId(recette._id));
     dispatch(addImage(recette.image));
     dispatch(addNotes(recette.notes));
     dispatch(addCategory(recette.categorie));
     dispatch(addRecette(formattedRecette));
   };
-
   //*----------Send Reciepe to ScreenRecette-------------
-  const handleShow = (recette, newNombrePersonnes) => {
-    modifyQty(recette, newNombrePersonnes);
+  const handleShow = (recette) => {
     goToScreenB();
   };
 
@@ -212,7 +201,10 @@ export default function CahierScreen() {
                   style={[{ opacity: opacityAnimations.current[index] }]}
                 >
                   <TouchableOpacity
-                    onPress={() => handleShow(recette, nombrePersonnes)}
+                    onPress={() => {
+                      modifyRecetteReducer(recette);
+                      handleShow();
+                    }}
                     onLongPress={() => showSuppressReciepe(recette)}
                   >
                     <View style={styles.recette}>
