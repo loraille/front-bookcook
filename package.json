@@ -1,0 +1,45 @@
+{
+  "name": "cahier-de-recettes",
+  "version": "1.0.0",
+  "main": "node_modules/expo/AppEntry.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "eject": "expo eject"
+  },
+  "jest": {
+    "preset": "jest-expo",
+    "transformIgnorePatterns": [
+      "node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg)"
+    ]
+  },
+  "dependencies": {
+    "@expo-google-fonts/dancing-script": "^0.2.3",
+    "@react-navigation/bottom-tabs": "6",
+    "@react-navigation/native": "6",
+    "@react-navigation/native-stack": "6",
+    "@reduxjs/toolkit": "^1.8.3",
+    "expo": "^51.0.37",
+    "expo-app-loading": "^2.1.1",
+    "expo-camera": "~15.0.16",
+    "expo-font": "~12.0.10",
+    "expo-image-picker": "~15.0.7",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "react-native": "0.74.5",
+    "react-native-keyboard-aware-scroll-view": "^0.9.5",
+    "react-native-modal": "^13.0.1",
+    "react-native-safe-area-context": "4.10.5",
+    "react-native-screens": "3.31.1",
+    "react-native-vector-icons": "^10.2.0",
+    "react-redux": "^8.0.2",
+    "semver": "^7.5.2"
+  },
+  "devDependencies": {
+    "jest": "^29.2.1",
+    "jest-expo": "~51.0.4"
+  },
+  "private": true
+}
