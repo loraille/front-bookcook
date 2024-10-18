@@ -1,4 +1,4 @@
-const urlBackend = 'https://back-cookbook.vercel.app';
+const urlBackend = 'url du back';
 
 const mindeeResponse = {
   cuissontime: { value: '10 min' },
