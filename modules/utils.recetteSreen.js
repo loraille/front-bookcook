@@ -74,6 +74,7 @@ export const selectImage = async (
   setIsImageReplaced,
   uploadImageToBackend,
   imageUrlReducer,
+  setIsUploadingImage,
 ) => {
   console.log('imageUrlReducer', imageUrlReducer);
   if (imageUrlReducer !== null && imageUrlReducer !== '') {
@@ -106,6 +107,7 @@ export const selectImage = async (
     if (selectedAsset.uri) {
       setSelectedImage(selectedAsset.uri);
       setIsImageReplaced(true);
+      setIsUploadingImage(true);
 
       // Suppress previous pictures from cloudinary if they are not the default image
       if (pictureUrl.length > 0) {
@@ -123,7 +125,9 @@ export const selectImage = async (
       }
 
       const imageUrl = await uploadImageToBackend(selectedAsset.uri);
-      setSelectedImage(imageUrl);
+      setSelectedImage(imageUrl); // URL from Cloudinary
+      setIsUploadingImage(false);
+      console.log('imageUrl', imageUrl);
     }
   }
 };
@@ -173,7 +177,6 @@ const deleteImageFromCloudinary = async (url) => {
     );
 
     const textResponse = await response.text();
-    //console.log('Raw response:', textResponse);
 
     if (response.ok) {
       const result = JSON.parse(textResponse);

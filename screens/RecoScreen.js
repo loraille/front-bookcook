@@ -33,13 +33,15 @@ export default function RecoScreen() {
   const isFocused = useIsFocused();
   const dispatch = useDispatch();
   const navigation = useNavigation();
-
   const [hasPermission, setHasPermission] = useState(false);
   const [type, setType] = useState(CameraType.back);
   const [flashMode, setFlashMode] = useState(FlashMode.off);
   const [loading, setLoading] = useState(false);
   const cameraRef = useRef(null);
+  const [errorMessage, setErrorMessage] = useState(null);
+  const [isErrorModalVisible, setIsErrorModalVisible] = useState(false);
 
+  //*-----------------Camera request-------------------------------------
   useEffect(() => {
     (async () => {
       const result = await Camera.requestCameraPermissionsAsync();
@@ -48,7 +50,7 @@ export default function RecoScreen() {
       }
     })();
   }, []);
-
+  //*---------------Take picture process-----------------------------------
   const takePicture = async () => {
     try {
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.3 });
@@ -102,14 +104,17 @@ export default function RecoScreen() {
       console.error('Error taking picture:', error);
       setLoading(false);
 
-      // Show alert for network error
+      // Set error message and show modal
       if (error.message === 'Network response was not ok') {
-        Alert.alert(
-          'Erreur de connexion',
-          'La connexion au serveur a échoué. Veuillez réessayer.',
-          [{ text: 'OK' }],
+        setErrorMessage(
+          'Erreur de connexion. La connexion au serveur a échoué. Veuillez réessayer.',
+        );
+      } else {
+        setErrorMessage(
+          'Une erreur inconnue est survenue. Veuillez réessayer.',
         );
       }
+      setIsErrorModalVisible(true);
     }
   };
 
@@ -226,5 +231,38 @@ const styles = StyleSheet.create({
     fontFamily: 'DancingScript_400Regular',
     fontSize: 35,
     marginBottom: 20,
+  },
+  modal: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: 294,
+    height: 189,
+    borderRadius: 10,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  backgroundImage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '100%',
+    width: '100%',
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  modalText: {
+    fontFamily: 'DancingScript_400Regular',
+    fontSize: 28,
+    color: 'white',
+    textAlign: 'center',
+    margin: 20,
   },
 });

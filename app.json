@@ -17,7 +17,12 @@
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -36,13 +41,6 @@
     "runtimeVersion": {
       "policy": "appVersion"
     },
-    "plugins": [
-      [
-        "expo-font",
-        {
-          "fonts": ["./assets/fonts/DancingScript-VariableFont_wght.ttf"]
-        }
-      ]
-    ]
+    "plugins": [["expo-font"]]
   }
 }
