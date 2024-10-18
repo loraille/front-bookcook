@@ -1,4 +1,4 @@
-const urlBackend = 'http://192.168.1.183:3000';
+const urlBackend = 'https://back-cookbook.vercel.app';
 
 const mindeeResponse = {
   cuissontime: { value: '10 min' },
