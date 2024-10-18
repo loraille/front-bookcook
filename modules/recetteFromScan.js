@@ -38,11 +38,9 @@ const RecetteFromScan = () => {
   let [fontsLoaded] = useFonts({
     DancingScript_400Regular,
   });
-
   const recetteInfo = useSelector((state) => state.recette.value);
   const userToken = useSelector((state) => state.user.value.token);
   const recette = recetteInfo.mindeeInfo;
-
   const [nombrePersonnes, setNombrePersonnes] = useState(
     recette.nombrepersonnes.value,
   );
@@ -61,18 +59,15 @@ const RecetteFromScan = () => {
   const [notes, setNotes] = useState(recette.notes);
   const [isCategoryChosen, setIsCategoryChosen] = useState(false);
   const [loading, setLoading] = useState(false);
-
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const screenHeight = Dimensions.get('window').height;
-
   const [isModalVisible, setModalVisible] = useState(false);
   const [isPersonnesModalVisible, setPersonnesModalVisible] = useState(false);
-
   const navigation = useNavigation();
-
   const goToCahierScreen = () => {
     navigation.navigate('Cahier');
   };
-
+  //*-------------------Update values on---------------------------------
   useFocusEffect(
     useCallback(() => {
       setNombrePersonnes(recette.nombrepersonnes.value);
@@ -117,7 +112,7 @@ const RecetteFromScan = () => {
     },
     [isEditing],
   );
-
+  //*--------------------change ingredient/qty/unit---------------
   const handleIngredientChange = useCallback((index, field, value) => {
     setIngredients((prevIngredients) => {
       const updatedIngredients = [...prevIngredients];
@@ -128,13 +123,13 @@ const RecetteFromScan = () => {
       return updatedIngredients;
     });
   }, []);
-
+  //*-------------------remove ingredient------------------------
   const handleRemoveIngredient = useCallback((index) => {
     setIngredients((prevIngredients) =>
       prevIngredients.filter((_, i) => i !== index),
     );
   }, []);
-
+  //*------------------add ingredient----------------------------
   const handleAddIngredient = useCallback(() => {
     setIngredients((prevIngredients) => {
       const newIngredients = [
@@ -162,7 +157,7 @@ const RecetteFromScan = () => {
     },
     [isEditing],
   );
-
+  //*---------------------enter modification preparation-------------------
   const handlePreparationChange = useCallback((index, value) => {
     setPreparation((prevPreparation) => {
       const updatedPreparation = [...prevPreparation];
@@ -173,21 +168,25 @@ const RecetteFromScan = () => {
       return updatedPreparation;
     });
   }, []);
-
+  //*----------------------------remove a preapration-----------------------
   const handleRemovePreparation = useCallback((index) => {
     setPreparation((prevPreparation) =>
       prevPreparation.filter((_, i) => i !== index),
     );
   }, []);
-
+  //*----------------------------add a preaparation-------------------------
   const handleAddPreparation = useCallback(() => {
     setPreparation((prevPreparation) => [
       ...prevPreparation,
       { consigne: 'Appuyer pour éditer' },
     ]);
   }, []);
-  //*----------------------RENDER INGREDIENT /PREPARATION----------------------
-  //*----------------------RENDER INGREDIENT /PREPARATION----------------------
+  //*----------------------RENDER INGREDIENt----------------------
+  const capitalizeFirstLetter = (string) => {
+    if (!string) return '';
+    return string.charAt(0).toUpperCase() + string.slice(1);
+  };
+
   const renderIngredients = useMemo(() => {
     return ingredients.map((data, i) => (
       <View key={i} style={styles.ingredientItem}>
@@ -225,7 +224,7 @@ const RecetteFromScan = () => {
                   }
                   placeholder="Unité"
                 />
-                <View style={styles.buttonContainer}>
+                <View style={[styles.buttonContainer, { marginTop: 10 }]}>
                   <TouchableOpacity
                     onPress={() => setEditingIngredientIndex(null)}
                   >
@@ -238,13 +237,15 @@ const RecetteFromScan = () => {
               </View>
             ) : (
               <Text style={styles.ingredient}>
-                - {data.ingredient} {data.quantite} {data.unite}
+                - {capitalizeFirstLetter(data.ingredient)} {data.quantite}{' '}
+                {data.unite}
               </Text>
             )}
           </TouchableOpacity>
         ) : (
           <Text style={styles.ingredient}>
-            - {data.ingredient} {data.quantite} {data.unite}
+            - {capitalizeFirstLetter(data.ingredient)} {data.quantite}{' '}
+            {data.unite}
           </Text>
         )}
       </View>
@@ -256,6 +257,8 @@ const RecetteFromScan = () => {
     handleIngredientChange,
     handleRemoveIngredient,
   ]);
+
+  //*----------------------RENDER PREPARATION----------------------
   const renderPreparations = useMemo(() => {
     return preparation.map((data, j) => (
       <View key={j} style={styles.preparationItem}>
@@ -392,8 +395,9 @@ const RecetteFromScan = () => {
         <View style={styles.bunttonContainer}>
           <TouchableOpacity
             onPress={handleEdition}
-            style={styles.button}
+            style={[styles.button, isUploadingImage && styles.disabledButton]} // Désactiver le bouton si l'image est en cours de téléchargement
             activeOpacity={0.8}
+            disabled={isUploadingImage} // Désactiver le bouton si l'image est en cours de téléchargement
           >
             <Text style={styles.textButton}>
               {isEditing ? "Terminer l'édition" : 'Editer'}
@@ -513,36 +517,21 @@ const RecetteFromScan = () => {
             ],
           ]}
         >
-          <View style={styles.pictureContainer}>
-            {isEditing && (
-              <TouchableOpacity
-                onPress={() =>
-                  selectImage(
-                    setSelectedImage,
-                    setIsImageReplaced,
-                    uploadImageToBackend,
-                    selectedImage,
-                  )
-                }
-              >
-                <Image
-                  style={[
-                    styles.foodPicture,
-                    { height: screenHeight * 0.2 },
-                    isImageReplaced
-                      ? styles.replacedImage
-                      : styles.defaultImage,
-                  ]}
-                  source={
-                    selectedImage
-                      ? { uri: selectedImage }
-                      : require('../assets/foodPicture.png')
-                  }
-                  resizeMode={isImageReplaced ? 'cover' : 'contain'}
-                />
-              </TouchableOpacity>
-            )}
-            {!isEditing && (
+          {isUploadingImage ? (
+            <ActivityIndicator size="large" color="#f1948a" />
+          ) : (
+            <TouchableOpacity
+              onPress={() =>
+                selectImage(
+                  setSelectedImage,
+                  setIsImageReplaced,
+                  uploadImageToBackend,
+                  selectedImage,
+                  setIsUploadingImage,
+                )
+              }
+              disabled={!isEditing} // Désactiver le bouton si l'édition n'est pas activée
+            >
               <Image
                 style={[
                   styles.foodPicture,
@@ -556,8 +545,8 @@ const RecetteFromScan = () => {
                 }
                 resizeMode={isImageReplaced ? 'cover' : 'contain'}
               />
-            )}
-          </View>
+            </TouchableOpacity>
+          )}
         </View>
         {/* ---------------------------INGREDIENTS--------------------------- */}
         <View style={styles.ingredientsContainer}>
@@ -566,9 +555,9 @@ const RecetteFromScan = () => {
           {isEditing && (
             <TouchableOpacity
               onPress={handleAddIngredient}
-              style={styles.addButton}
+              style={[styles.button, { marginTop: 10 }]}
             >
-              <Text style={styles.addButtonText}>+ Ajouter un ingrédient</Text>
+              <Text style={styles.textButton}>+ Ajouter un ingrédient</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -583,9 +572,9 @@ const RecetteFromScan = () => {
         {isEditing && (
           <TouchableOpacity
             onPress={handleAddPreparation}
-            style={styles.addButton}
+            style={[styles.button, { marginTop: 10 }]}
           >
-            <Text style={styles.addButtonText}>+ Ajouter une consigne</Text>
+            <Text style={styles.textButton}>+ Ajouter une consigne</Text>
           </TouchableOpacity>
         )}
         <Image
@@ -611,9 +600,6 @@ const RecetteFromScan = () => {
               Choisir une catégorie au dessus de l'image de la recette pour
               ajouter au cahier!
             </Text>
-            {/* <TouchableOpacity onPress={toggleModal}>
-                <Text style={styles.closeButton}>OK</Text>
-              </TouchableOpacity> */}
           </View>
         </View>
       </Modal>
@@ -693,8 +679,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     borderColor: 'black',
-    // borderWidth: 1,
-    // padding: 5,
     marginVertical: 10,
   },
   person: {
@@ -704,8 +688,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     textAlign: 'center',
-    // borderColor: 'black',
-    // borderWidth: 1,
   },
   infos2: {
     height: 40,
@@ -812,13 +794,25 @@ const styles = StyleSheet.create({
   },
   removeButton: {
     fontSize: 20,
-    color: 'red',
-    marginLeft: 10,
+    color: 'white',
+    // borderColor: 'red',
+    // borderWidth: 1,
+    marginRight: 10,
+    textAlign: 'center',
+    width: '100%',
+    backgroundColor: '#f1948a',
+    borderRadius: 10,
+    padding: 5,
   },
   okButton: {
     fontSize: 20,
-    color: 'red',
+    color: 'white',
     marginRight: 10,
+    textAlign: 'center',
+    width: '100%',
+    backgroundColor: '#f1948a',
+    borderRadius: 10,
+    padding: 5,
   },
   buttonContainer: {
     flexDirection: 'row',
@@ -846,7 +840,6 @@ const styles = StyleSheet.create({
   preparationItem: {
     flexDirection: 'column',
     alignItems: 'flex-start',
-    // marginVertical: 5,
   },
   preparationTitre: {
     fontSize: 25,
@@ -907,6 +900,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#f1948a',
     borderRadius: 10,
   },
+  disabledButton: {
+    backgroundColor: 'gray',
+  },
   textButton: {
     color: '#ffffff',
     height: 30,
@@ -958,8 +954,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContent: {
-    width: '100%',
-    height: '30%',
+    width: 294,
+    height: 189,
     borderRadius: 10,
     overflow: 'hidden',
     position: 'relative',
@@ -970,7 +966,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    resizeMode: 'cover',
+    //resizeMode: 'contain',
     height: '100%',
     width: '100%',
   },

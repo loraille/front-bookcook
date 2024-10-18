@@ -11,6 +11,7 @@ import {
   Animated,
   ScrollView,
   Image,
+  TextInput,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { urlBackend } from '../var';
@@ -25,19 +26,25 @@ export default function CahierScreen() {
   const navigation = useNavigation();
   const dispatch = useDispatch();
   const userToken = useSelector((state) => state.user.value.token);
+  const [recette, setRecette] = useState();
+  const [foundedReciepes, setFoundedReciepes] = useState([]);
   const [recettes, setRecettes] = useState([]);
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [loading, setLoading] = useState(false);
   const [isReciepeFound, setIsReciepeFound] = useState(false);
+  const [isSearched, setIsSearched] = useState(false);
   const [recipeToDelete, setRecipeToDelete] = useState(null);
+  const [searchError, setSearchError] = useState(false); // New state for search error
   const opacityAnimations = useRef([]);
+
   //*------------------Get Categories--------------------
   useEffect(() => {
     fetch(`${urlBackend}/categorie`)
       .then((response) => response.json())
       .then((data) => setCategories(data.categoryInfo));
   }, []);
+
   //*-------------------Show Reciepes------------------
   const handleShowReciepies = (category) => {
     if (selectedCategory?._id === category._id) {
@@ -48,6 +55,98 @@ export default function CahierScreen() {
       setSelectedCategory(category);
     }
   };
+
+  //*-------------------Render categories--------------
+  const listCategories = categories.map((category) => (
+    <View key={category._id}>
+      <TouchableOpacity
+        style={[
+          styles.categoriesContainer,
+          { backgroundColor: category.color },
+        ]}
+        onPress={() => handleShowReciepies(category)}
+        disabled={loading && selectedCategory?._id === category._id}
+      >
+        <Text style={styles.categoriesText}>{category.name}</Text>
+      </TouchableOpacity>
+      {loading && selectedCategory?._id === category._id && (
+        <ActivityIndicator size="small" color="#0000ff" />
+      )}
+      {selectedCategory?._id === category._id && !loading && (
+        <View>
+          {isReciepeFound ? (
+            recettes.map((recette, index) => (
+              <View key={recette._id} style={styles.recetteContainer}>
+                <Animated.View
+                  style={{ opacity: opacityAnimations.current[index] }}
+                >
+                  <TouchableOpacity
+                    onPress={() => handleShow(recette)}
+                    onLongPress={() => setRecipeToDelete(recette)}
+                  >
+                    <View style={styles.recette}>
+                      <Text style={styles.recetteTexte}>{recette.titre}</Text>
+                    </View>
+                  </TouchableOpacity>
+                </Animated.View>
+                {recipeToDelete?._id === recette._id && (
+                  <View style={styles.deleteContainer}>
+                    <TouchableOpacity onPress={() => setRecipeToDelete(null)}>
+                      <Text style={styles.okButton}>Annuler</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleDeleteRecipe(recette._id)}
+                    >
+                      <Text style={styles.okButton}>Supprimer</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            ))
+          ) : (
+            <Text style={styles.noRecipeText}>Pas encore de recette!</Text>
+          )}
+        </View>
+      )}
+    </View>
+  ));
+
+  //*-------------------Reciepes  founded render---------------------
+  const listReciepsFounded = foundedReciepes.map((recette, index) => (
+    <View key={recette._id} style={styles.recetteContainer}>
+      <Animated.View style={{ opacity: opacityAnimations.current[index] }}>
+        <TouchableOpacity
+          onPress={() => {
+            handleShow(recette);
+            setIsSearched(false);
+          }}
+          onLongPress={() => {
+            setRecipeToDelete(recette);
+          }}
+        >
+          <View
+            style={[
+              styles.recette,
+              { backgroundColor: recette.categorie.color },
+            ]}
+          >
+            <Text style={styles.recetteTexte}>{recette.titre}</Text>
+          </View>
+        </TouchableOpacity>
+      </Animated.View>
+      {recipeToDelete?._id === recette._id && (
+        <View style={styles.deleteContainer}>
+          <TouchableOpacity onPress={() => setRecipeToDelete(null)}>
+            <Text style={styles.okButton}>Annuler</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => handleDeleteRecipe(recette._id)}>
+            <Text style={styles.okButton}>Supprimer</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  ));
+
   //*-------------------Reciepes animation-------------
   const startAnimations = (recettes) => {
     opacityAnimations.current = recettes.map(() => new Animated.Value(0));
@@ -60,26 +159,69 @@ export default function CahierScreen() {
       }).start();
     });
   };
+
+  //*-------------------Search--------------------------------
+  const handleSearch = (search, userToken) => {
+    if (search.trim() === '') {
+      setSearchError(true);
+      return;
+    }
+    handleSearchInBdd(search, userToken);
+    setRecette('');
+  };
+
+  //*-------------------Search in Bdd--------------------------
+  const handleSearchInBdd = async (search, userToken) => {
+    try {
+      const response = await fetch(
+        `${urlBackend}/getRecettes/${userToken}/${search}`,
+      );
+      const data = await response.json();
+      if (data.result) {
+        // sort by category
+        const sortedRecettes = data.userInfo.recettes.sort((a, b) =>
+          a.categorie.name.localeCompare(b.categorie.name),
+        );
+        setFoundedReciepes(sortedRecettes);
+        setIsSearched(true);
+        setSearchError(false); // Reset search error
+      } else {
+        setSearchError(true); // Set search error
+      }
+    } catch (error) {
+      console.error('Error with search:', error);
+      setSearchError(true); // Set search error
+    }
+  };
+
   //*--------------------Send reciepe to recetteScreeen-----------------
   const handleShow = (recette) => {
     modifyRecetteReducer(recette, dispatch);
     navigation.navigate('Recette', { from: 'C' });
   };
+
   //*------------------Supress reciepe----------------------------------
-  const handleDeleteRecipe = async () => {
+  const handleDeleteRecipe = async (id) => {
     try {
-      await fetch(`${urlBackend}/recette/${recipeToDelete._id}`, {
+      await fetch(`${urlBackend}/recette/${id}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
       });
-      setRecettes(
-        recettes.filter((recette) => recette._id !== recipeToDelete._id),
-      );
+      //update reciepes founded result
+      if (isSearched) {
+        setFoundedReciepes(
+          foundedReciepes.filter((recette) => recette._id !== id),
+        );
+      } else {
+        setRecettes(recettes.filter((recette) => recette._id !== id));
+      }
+
       setRecipeToDelete(null);
     } catch (error) {
       console.error('Error deleting recipe:', error);
     }
   };
+
   //*-----------------------Rerender reciepes ------------------------
   useFocusEffect(
     React.useCallback(() => {
@@ -104,6 +246,7 @@ export default function CahierScreen() {
       }
     }, [selectedCategory, userToken]),
   );
+
   //*------------------------------RENDER----------------------------
   return (
     <KeyboardAvoidingView
@@ -120,73 +263,51 @@ export default function CahierScreen() {
           style={styles.scrollView}
           contentContainerStyle={styles.scrollViewContent}
         >
+          <Text style={styles.titreCentre}>Recherche:</Text>
+          <View style={styles.searchContainer}>
+            <TextInput
+              placeholder="Recette cherchée"
+              onChangeText={(value) => setRecette(value)}
+              value={recette}
+              style={styles.input}
+            />
+            <TouchableOpacity
+              onPress={() => {
+                handleSearch(recette, userToken);
+              }}
+            >
+              <Image
+                style={styles.loupe}
+                source={require('../assets/loupe.png')}
+              />
+            </TouchableOpacity>
+          </View>
+          {searchError && (
+            <Text style={styles.searchErrorText}>Pas de recette trouvée</Text>
+          )}
+
           <Text style={styles.titreCentre}>Mes recettes:</Text>
-          {categories.map((category) => (
-            <View key={category._id}>
+          {!isSearched || searchError ? (
+            listCategories
+          ) : (
+            <>
+              {listReciepsFounded}
               <TouchableOpacity
-                style={[
-                  styles.categoriesContainer,
-                  { backgroundColor: category.color },
-                ]}
-                onPress={() => handleShowReciepies(category)}
-                disabled={loading && selectedCategory?._id === category._id}
+                style={styles.retour}
+                onPress={() => {
+                  setIsSearched(false);
+                }}
               >
-                <Text style={styles.categoriesText}>{category.name}</Text>
+                <Text style={styles.recetteTexte}>Annuler la recherche</Text>
               </TouchableOpacity>
-              {loading && selectedCategory?._id === category._id && (
-                <ActivityIndicator size="small" color="#0000ff" />
-              )}
-              {selectedCategory?._id === category._id && !loading && (
-                <View>
-                  {isReciepeFound ? (
-                    recettes.map((recette, index) => (
-                      <View key={recette._id} style={styles.recetteContainer}>
-                        <Animated.View
-                          style={{ opacity: opacityAnimations.current[index] }}
-                        >
-                          <TouchableOpacity
-                            onPress={() => handleShow(recette)}
-                            onLongPress={() => setRecipeToDelete(recette)}
-                          >
-                            <View style={styles.recette}>
-                              <Text style={styles.recetteTexte}>
-                                {recette.titre}
-                              </Text>
-                            </View>
-                          </TouchableOpacity>
-                        </Animated.View>
-                        {recipeToDelete?._id === recette._id && (
-                          <View style={styles.deleteContainer}>
-                            <TouchableOpacity
-                              onPress={() => setRecipeToDelete(null)}
-                            >
-                              <Text style={styles.cancelButtonText}>
-                                Annuler
-                              </Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={handleDeleteRecipe}>
-                              <Text style={styles.deleteButtonText}>
-                                Supprimer
-                              </Text>
-                            </TouchableOpacity>
-                          </View>
-                        )}
-                      </View>
-                    ))
-                  ) : (
-                    <Text style={styles.noRecipeText}>
-                      Pas encore de recette!
-                    </Text>
-                  )}
-                </View>
-              )}
-            </View>
-          ))}
+            </>
+          )}
         </ScrollView>
       </View>
     </KeyboardAvoidingView>
   );
 }
+
 //----------------------------STYLE-------------------------------
 const styles = StyleSheet.create({
   container: {
@@ -199,6 +320,48 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '80%',
     justifyContent: 'center',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 10,
+    borderRadius: 5,
+    marginVertical: 5,
+    borderWidth: 1,
+    borderColor: 'black',
+    backgroundColor: '#f5f1d7',
+  },
+  retour: {
+    height: 50,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 10,
+    borderRadius: 5,
+    marginVertical: 5,
+    borderWidth: 1,
+    borderColor: 'black',
+    backgroundColor: '#f5f1d7',
+  },
+  okButton: {
+    fontSize: 15,
+    color: 'white',
+    marginRight: 10,
+    textAlign: 'center',
+    width: '100%',
+    backgroundColor: '#f1948a',
+    borderRadius: 7,
+    padding: 5,
+  },
+  loupe: {
+    width: 30,
+    height: 30,
+  },
+  input: {
+    fontFamily: 'DancingScript_400Regular',
+    fontSize: 20,
+    width: '80%',
   },
   titreCentre: {
     fontFamily: 'DancingScript_400Regular',
@@ -236,6 +399,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'black',
   },
+
   recetteTexte: {
     fontFamily: 'DancingScript_400Regular',
     fontSize: 22,
@@ -269,5 +433,12 @@ const styles = StyleSheet.create({
     resizeMode: 'cover',
     height: '100%',
     width: '100%',
+  },
+  searchErrorText: {
+    fontFamily: 'DancingScript_400Regular',
+    fontSize: 22,
+    textAlign: 'center',
+    color: 'red',
+    marginTop: 10,
   },
 });

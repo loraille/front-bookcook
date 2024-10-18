@@ -33,10 +33,7 @@ export default function HomeScreen({ navigation }) {
     DancingScript_400Regular,
   });
 
-  if (!fontsLoaded) {
-    return null;
-  }
-
+  //*-------------------------------Signin---------------------------
   const handleConnection = () => {
     fetch(`${urlBackend}/signin`, {
       method: 'POST',
@@ -62,7 +59,7 @@ export default function HomeScreen({ navigation }) {
         }
       });
   };
-
+  //*--------------------------Signup----------------------------
   const handleSignUp = () => {
     fetch(`${urlBackend}/signup`, {
       method: 'POST',
@@ -89,7 +86,7 @@ export default function HomeScreen({ navigation }) {
         }
       });
   };
-
+  //*-------------sign in/sign up entries-----------------------
   const toggleForm = (type) => {
     setIsSignUp(type);
     setUsername('');
@@ -97,7 +94,7 @@ export default function HomeScreen({ navigation }) {
     setEmail('');
     setErrorMessage('');
   };
-
+  //*------------reset fields--------------------------------------
   const resetForm = () => {
     setIsSignUp(null);
     setUsername('');
@@ -105,7 +102,10 @@ export default function HomeScreen({ navigation }) {
     setEmail('');
     setErrorMessage('');
   };
-
+  //*------------------RENDER----------------------------------------
+  if (!fontsLoaded) {
+    return null;
+  }
   return (
     <View style={styles.container}>
       <Image
