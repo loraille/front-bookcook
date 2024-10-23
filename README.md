@@ -1,7 +1,7 @@
 # front-bookcook
 
 ## Description
-Application qui fonctionne avec l'API Mindee qui permet de scanner une recette de cuisine.
+Application fonctionne avec l'API Mindee qui permet de scanner une recette de cuisine.
 L'idée est de constituer son carnet de recette pour pouvoir trouver facilement et sauvegarder une recette.
 
 ## Vidéo
